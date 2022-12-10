@@ -12,7 +12,7 @@ contract HttpServerTest is Test {
         httpServer = new HttpServer();
     }
 
-    function testIncrement() public {
+    function testRequest() public {
         bytes memory request = bytes(
             "GET / HTTP/1.1\n"
             "Host: 127.0.0.1\n"
@@ -23,5 +23,7 @@ contract HttpServerTest is Test {
             request
         );
         string memory responseString = string(responseBytes);
+        console.logBool(success);
+        console.logString(responseString);
     }
 }
