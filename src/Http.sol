@@ -1,70 +1,32 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
-import "./StringConcat.sol";
+import "./utils/StringConcat.sol";
 import "./WebApp.sol";
 
 /**
- * Utility function to build a raw HTTP response given a status
- * code, headers, and response content.
- */
-library HttpResponseBuilder {
-    using StringConcat for string;
-    using Strings for uint16;
-    using Strings for uint256;
-
-    function buildResponse(
-        uint16 statusCode,
-        string[] calldata responseHeaders,
-        string calldata responseContent
-    ) external returns (bytes memory responseBytes) {
-        string memory responseHeadersString = "";
-        responseHeadersString = responseHeadersString.concat(
-            "HTTP/1.1 ",
-            statusCode.toString(),
-            " OK\n"
-            "Server: fallback()\n"
-        );
-
-        for (uint8 i = 0; i < responseHeaders.length; i += 1) {
-            responseHeadersString = responseHeadersString.concat(
-                responseHeaders[i],
-                "\n"
-            );
-        }
-
-        responseBytes = bytes(
-            responseHeadersString.concat(
-                "Date: ",
-                block.timestamp.toString(),
-                "\n"
-                "Content-Length: ",
-                bytes(responseContent).length.toString(),
-                "\n\n",
-                responseContent
-            )
-        );
-
-        return responseBytes;
-    }
-}
-
-/**
  * Maps HTTP requests to the correct routes in the `WebApp`,
- * returns HTTP response data.
+ * and returns HTTP response data.
  */
 contract HttpHandler {
+    using StringConcat for string;
+
     WebApp app;
 
     constructor(WebApp webApp) {
         app = webApp;
     }
 
+    /**
+     * Calls the correct function on the web app contract based
+     * on the route passed in.
+     */
     function handleRoute(
-        string calldata route,
+        HttpMessages.Method method,
+        string memory path,
         string[] memory requestHeaders,
-        bytes memory requestContent
+        bytes memory requestContent,
+        bool debug
     )
         external
         returns (
@@ -73,10 +35,14 @@ contract HttpHandler {
             string memory responseContent
         )
     {
+        app.getIndex(requestHeaders, requestContent);
         (bool success, bytes memory data) = address(app).call(
             abi.encodeWithSignature(
                 // All routes have a signature of `routeName(string[],bytes)`
-                string.concat(app.routes(route), "(string[],bytes)"),
+                StringConcat.concat(
+                    app.routes(method, path),
+                    "(string[],bytes)"
+                ),
                 responseHeaders,
                 responseContent
             )
@@ -88,38 +54,102 @@ contract HttpHandler {
             responseHeaders = new string[](1);
             responseHeaders[0] = "Content-Type: text/html";
 
-            // TODO(nathanhleung) Create Solidity HTML DSL?
-            responseContent = "<!DOCTYPE html>"
-            "<html>"
-            "<head><title>500 Server Error</title></head>"
-            "<body><p>Internal Server Error</p></body>"
-            "</html>";
-        } else {
-            statusCode = 200;
+            // Grab revert reason
+            // https://ethereum.stackexchange.com/a/86983
+            bytes memory revertReason;
+            assembly {
+                let freeMemoryPointer := mload(0x40)
+                returndatacopy(freeMemoryPointer, 0, returndatasize())
+                revertReason := mload(freeMemoryPointer)
+            }
 
+            // TODO(nathanhleung) Create Solidity HTML DSL?
+            responseContent = "";
+            responseContent = responseContent.concat(
+                "<!DOCTYPE html>"
+                "<html>"
+                "<head><title>500 Server Error</title></head>"
+                "<body>"
+                "<h1>500 Internal Server Error</h1>",
+                debug
+                    ? StringConcat.concat("<p>", string(revertReason), "</p>")
+                    : "",
+                "<hr>"
+                "<p><i>fallback() web server</i></p>"
+                "</body>"
+                "</html>"
+            );
+        } else {
+            // TODO(nathanhleung): parse bytes memory data
+            // returned data - should have all this
+
+            statusCode = 200;
             responseHeaders = new string[](1);
             responseHeaders[0] = "Content-Type: text/html";
 
             responseContent = "<!DOCTYPE html>"
             "<html>"
-            "<head><title>Hello World</title></head>"
-            "<body><p>What hath god wrought?</p></body>"
+            "<head><title>fallback()</title></head>"
+            "<body><h1>fallback() web server<h1>"
+            "<p>default response</p></body>"
             "</html>";
         }
 
         return (statusCode, responseHeaders, responseContent);
     }
+
+    /**
+     * Handles a route, sets `debug` to `false` (i.e. this effectively
+     * makes `false` the default value of the `debug` parameter).
+     */
+    function handleRoute(
+        HttpMessages.Method method,
+        string calldata path,
+        string[] memory requestHeaders,
+        bytes memory requestContent
+    )
+        external
+        returns (
+            uint16 statusCode,
+            string[] memory responseHeaders,
+            string memory responseContent
+        )
+    {
+        return
+            this.handleRoute(
+                method,
+                path,
+                requestHeaders,
+                requestContent,
+                false
+            );
+    }
 }
 
 /**
- * Parses arbitrary HTTP requests sent as bytes via the fallback
- * function, forwards parsed HTTP request data to `HttpHandler`.
+ * Parses arbitrary HTTP requests sent as bytes in the `fallback`
+ * function, then forwards parsed HTTP request data to `HttpHandler`.
  */
 contract HttpProxy {
+    using StringConcat for string;
+    using Strings for uint256;
+
     /**
-     * Handles HTTP requests. Set by consumer in `HttpServer`.
+     * Handles HTTP requests. Set in constructor of `HttpServer`.
      */
     HttpHandler internal handler;
+
+    /**
+     * Utilities for building and parsing HTTP messages. Set in
+     * constructor of `HttpServer`.
+     */
+    HttpMessages internal messages;
+
+    /**
+     * Whether to turn debug mode on or not (show errors on
+     * error pages). Set by `HttpServer`.
+     */
+    bool internal debug;
 
     /**
      * Since this contract has no functions besides `fallback()`,
@@ -128,27 +158,85 @@ contract HttpProxy {
      */
     fallback() external {
         bytes memory requestBytes = msg.data;
-        // TODO(nathanhleung): parse route from request
-        requestBytes;
 
-        string memory route = "/";
-        string[] memory requestHeaders = new string[](1);
-        requestHeaders[0] = "Host: localhost";
-        requestHeaders[0] = "Content-Length: 0";
-        bytes memory requestContent = bytes("");
+        // If we hit an error in parsing, we return 400
+        try messages.parseRequest(requestBytes) returns (
+            HttpMessages.Method method,
+            string memory path,
+            string[] memory requestHeaders,
+            bytes memory requestContent
+        ) {
+            (
+                uint16 statusCode,
+                string[] memory responseHeaders,
+                string memory responseContent
+            ) = handler.handleRoute(
+                    method,
+                    path,
+                    requestHeaders,
+                    requestContent
+                );
 
-        (
-            uint16 statusCode,
-            string[] memory responseHeaders,
-            string memory responseContent
-        ) = handler.handleRoute(route, requestHeaders, requestContent);
+            // return value is used by inline assembly below
+            messages.buildResponse(
+                statusCode,
+                responseHeaders,
+                responseContent
+            );
+        } catch Error(string memory reason) {
+            uint16 statusCode = 400;
 
-        // return value is used by inline assembly below
-        HttpResponseBuilder.buildResponse(
-            statusCode,
-            responseHeaders,
-            responseContent
-        );
+            string[] memory responseHeaders = new string[](1);
+            responseHeaders[0] = "Content-Type: text/html";
+
+            // TODO(nathanhleung) Create Solidity HTML DSL?
+            string memory responseContent = "";
+            responseContent = responseContent.concat(
+                "<!DOCTYPE html>"
+                "<html>"
+                "<head><title>400 Bad Request</title></head>"
+                "<body>"
+                "<h1>400 Bad Request</h1>",
+                (debug ? StringConcat.concat("<p>", reason, "</p>") : ""),
+                "<hr>"
+                "<p><i>fallback() web server</i></p>"
+                "</body>"
+                "</html>"
+            );
+
+            messages.buildResponse(400, responseHeaders, responseContent);
+        } catch Panic(uint256 reason) {
+            uint16 statusCode = 400;
+
+            string[] memory responseHeaders = new string[](1);
+            responseHeaders[0] = "Content-Type: text/html";
+
+            // TODO(nathanhleung) Create Solidity HTML DSL?
+            string memory responseContent = "";
+            responseContent = responseContent.concat(
+                "<!DOCTYPE html>"
+                "<html>"
+                "<head><title>400 Bad Request</title></head>"
+                "<body>"
+                "<h1>400 Bad Request</h1>",
+                (
+                    debug
+                        ? StringConcat.concat(
+                            "<p>",
+                            "Panic encountered while parsing HTTP request. Code: ",
+                            reason.toHexString(),
+                            "</p>"
+                        )
+                        : ""
+                ),
+                "<hr>"
+                "<p><i>fallback() web server</i></p>"
+                "</body>"
+                "</html>"
+            );
+
+            messages.buildResponse(400, responseHeaders, responseContent);
+        }
 
         assembly {
             // https://ethereum.stackexchange.com/questions/131771/when-writing-assembly-to-which-memory-address-should-i-start-writing

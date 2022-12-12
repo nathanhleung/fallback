@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "./utils/HttpMessages.sol";
 import "./WebApp.sol";
 
 contract ExampleApp is WebApp {
     constructor() {
-        routes["/"] = "getIndex";
-        routes["/debug"] = "getDebug";
-        routes["/error"] = "getError";
-        routes["/github"] = "getGithub";
+        routes[HttpMessages.Method.GET]["/"] = "getIndex";
+        routes[HttpMessages.Method.GET]["/debug"] = "getDebug";
+        routes[HttpMessages.Method.GET]["/error"] = "getError";
+        routes[HttpMessages.Method.GET]["/github"] = "getGithub";
+        test[HttpMessages.Method.GET]["string"] = "hey";
     }
 
     function getIndex(
@@ -48,7 +50,9 @@ contract ExampleApp is WebApp {
             string[] memory responseHeaders,
             string memory responseContent
         )
-    {}
+    {
+        // TODO(nathanhleung): show smart contract internals
+    }
 
     function getError(
         string[] memory requestHeaders,
@@ -60,7 +64,9 @@ contract ExampleApp is WebApp {
             string[] memory responseHeaders,
             string memory responseContent
         )
-    {}
+    {
+        // TODO(nathanhleung): call a function that will revert
+    }
 
     function getGithub(
         string[] memory requestHeaders,
@@ -72,5 +78,16 @@ contract ExampleApp is WebApp {
             string[] memory responseHeaders,
             string memory responseContent
         )
-    {}
+    {
+        responseHeaders = new string[](1);
+        responseHeaders[
+            0
+        ] = "Location: https://github.com/nathanhleung/fallback";
+
+        return (302, responseHeaders, "");
+    }
+
+    fallback() external {
+        // TODO(nathanhleung) return 404
+    }
 }

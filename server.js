@@ -1,6 +1,8 @@
 const http = require("http");
 const net = require("net");
 
+const ETHEREUM_RPC_HOST = process.env.ETHEREUM_RPC_HOST || "127.0.0.1";
+const ETHEREUM_RPC_PORT = process.env.ETHEREUM_RPC_PORT || 8545;
 const CONTRACT_ADDRESS = process.env.ADDRESS;
 
 async function handleRequest(requestData) {
@@ -19,9 +21,9 @@ async function handleRequest(requestData) {
 
     const httpRequest = http.request(
       {
-        host: "127.0.0.1",
+        host: ETHEREUM_RPC_HOST,
         path: "/",
-        port: 8545,
+        port: ETHEREUM_RPC_PORT,
         method: "POST",
         headers: {
           "Content-Type": "application/json",

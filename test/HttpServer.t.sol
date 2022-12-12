@@ -15,9 +15,9 @@ contract HttpServerTest is Test {
 
     function testRequest() public {
         bytes memory request = bytes(
-            "GET / HTTP/1.1\n"
-            "Host: 127.0.0.1\n"
-            "Accept-Language: en-US,en\n"
+            "GET / HTTP/1.1\r\n"
+            "Host: 127.0.0.1\r\n"
+            "Accept-Language: en-US,en\r\n"
         );
 
         (bool success, bytes memory responseBytes) = address(httpServer).call(
