@@ -4,7 +4,7 @@ const net = require("net");
 const CONTRACT_ADDRESS = process.env.ADDRESS;
 
 async function handleRequest(requestData) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const jsonRpcData = JSON.stringify({
       jsonrpc: "2.0",
       id: "1",
