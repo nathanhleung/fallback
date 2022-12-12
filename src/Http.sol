@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "./utils/H.sol";
+import "./utils/HttpConstants.sol";
 import "./utils/StringConcat.sol";
 import "./WebApp.sol";
+import "forge-std/console.sol";
 
 /**
  * Maps HTTP requests to the correct routes in the `WebApp`,
@@ -11,7 +14,7 @@ import "./WebApp.sol";
 contract HttpHandler {
     using StringConcat for string;
 
-    WebApp app;
+    WebApp public app;
 
     constructor(WebApp webApp) {
         app = webApp;
@@ -22,11 +25,10 @@ contract HttpHandler {
      * on the route passed in.
      */
     function handleRoute(
-        HttpMessages.Method method,
+        HttpConstants.Method method,
         string memory path,
         string[] memory requestHeaders,
-        bytes memory requestContent,
-        bool debug
+        bytes calldata requestContent
     )
         external
         returns (
@@ -35,7 +37,19 @@ contract HttpHandler {
             string memory responseContent
         )
     {
-        app.getIndex(requestHeaders, requestContent);
+        string memory routeHandlerName = app.routes(method, path);
+
+        // If route is unset, return 404
+        if (bytes(routeHandlerName).length == 0) {
+            (
+                uint16 _statusCode,
+                string[] memory _responseHeaders,
+                string memory _responseContent
+            ) = app.handleNotFound(requestHeaders, requestContent);
+
+            return (_statusCode, _responseHeaders, _responseContent);
+        }
+
         (bool success, bytes memory data) = address(app).call(
             abi.encodeWithSignature(
                 // All routes have a signature of `routeName(string[],bytes)`
@@ -43,86 +57,36 @@ contract HttpHandler {
                     app.routes(method, path),
                     "(string[],bytes)"
                 ),
-                responseHeaders,
-                responseContent
+                requestHeaders,
+                requestContent
             )
         );
 
+        // If unsuccessful call, return 500
         if (!success) {
-            statusCode = 500;
-
-            responseHeaders = new string[](1);
-            responseHeaders[0] = "Content-Type: text/html";
-
-            // Grab revert reason
-            // https://ethereum.stackexchange.com/a/86983
-            bytes memory revertReason;
             assembly {
-                let freeMemoryPointer := mload(0x40)
-                returndatacopy(freeMemoryPointer, 0, returndatasize())
-                revertReason := mload(freeMemoryPointer)
+                // Slice the sighash
+                // https://ethereum.stackexchange.com/questions/83528/how-can-i-get-the-revert-reason-of-a-call-in-solidity-so-that-i-can-use-it-in-th/83577#83577
+                data := add(data, 0x04)
             }
+            string memory revertReason = abi.decode(data, (string));
 
-            // TODO(nathanhleung) Create Solidity HTML DSL?
-            responseContent = "";
-            responseContent = responseContent.concat(
-                "<!DOCTYPE html>"
-                "<html>"
-                "<head><title>500 Server Error</title></head>"
-                "<body>"
-                "<h1>500 Internal Server Error</h1>",
-                debug
-                    ? StringConcat.concat("<p>", string(revertReason), "</p>")
-                    : "",
-                "<hr>"
-                "<p><i>fallback() web server</i></p>"
-                "</body>"
-                "</html>"
-            );
-        } else {
-            // TODO(nathanhleung): parse bytes memory data
-            // returned data - should have all this
+            (
+                uint16 _statusCode,
+                string[] memory _responseHeaders,
+                string memory _responseContent
+            ) = app.handleError(requestHeaders, bytes(revertReason));
 
-            statusCode = 200;
-            responseHeaders = new string[](1);
-            responseHeaders[0] = "Content-Type: text/html";
-
-            responseContent = "<!DOCTYPE html>"
-            "<html>"
-            "<head><title>fallback()</title></head>"
-            "<body><h1>fallback() web server<h1>"
-            "<p>default response</p></body>"
-            "</html>";
+            return (_statusCode, _responseHeaders, _responseContent);
         }
 
-        return (statusCode, responseHeaders, responseContent);
-    }
+        (
+            uint16 _statusCode,
+            string[] memory _responseHeaders,
+            string memory _responseContent
+        ) = abi.decode(data, (uint16, string[], string));
 
-    /**
-     * Handles a route, sets `debug` to `false` (i.e. this effectively
-     * makes `false` the default value of the `debug` parameter).
-     */
-    function handleRoute(
-        HttpMessages.Method method,
-        string calldata path,
-        string[] memory requestHeaders,
-        bytes memory requestContent
-    )
-        external
-        returns (
-            uint16 statusCode,
-            string[] memory responseHeaders,
-            string memory responseContent
-        )
-    {
-        return
-            this.handleRoute(
-                method,
-                path,
-                requestHeaders,
-                requestContent,
-                false
-            );
+        return (_statusCode, _responseHeaders, _responseContent);
     }
 }
 
@@ -133,6 +97,11 @@ contract HttpHandler {
 contract HttpProxy {
     using StringConcat for string;
     using Strings for uint256;
+
+    /**
+     * Set in constructor of `HttpServer`.
+     */
+    WebApp internal app;
 
     /**
      * Handles HTTP requests. Set in constructor of `HttpServer`.
@@ -146,12 +115,6 @@ contract HttpProxy {
     HttpMessages internal messages;
 
     /**
-     * Whether to turn debug mode on or not (show errors on
-     * error pages). Set by `HttpServer`.
-     */
-    bool internal debug;
-
-    /**
      * Since this contract has no functions besides `fallback()`,
      * all calls will be sent here. So if a user sends HTTP bytes
      * to this contract, we'll be able to parse them in here.
@@ -161,7 +124,7 @@ contract HttpProxy {
 
         // If we hit an error in parsing, we return 400
         try messages.parseRequest(requestBytes) returns (
-            HttpMessages.Method method,
+            HttpConstants.Method method,
             string memory path,
             string[] memory requestHeaders,
             bytes memory requestContent
@@ -184,58 +147,60 @@ contract HttpProxy {
                 responseContent
             );
         } catch Error(string memory reason) {
-            uint16 statusCode = 400;
-
-            string[] memory responseHeaders = new string[](1);
-            responseHeaders[0] = "Content-Type: text/html";
-
-            // TODO(nathanhleung) Create Solidity HTML DSL?
-            string memory responseContent = "";
-            responseContent = responseContent.concat(
-                "<!DOCTYPE html>"
-                "<html>"
-                "<head><title>400 Bad Request</title></head>"
-                "<body>"
-                "<h1>400 Bad Request</h1>",
-                (debug ? StringConcat.concat("<p>", reason, "</p>") : ""),
-                "<hr>"
-                "<p><i>fallback() web server</i></p>"
-                "</body>"
-                "</html>"
+            string[] memory requestHeaders = new string[](2);
+            requestHeaders[0] = StringConcat.concat(
+                "Content-Type",
+                "text/plain"
             );
+            requestHeaders[1] = StringConcat.concat(
+                "Content-Length",
+                bytes(reason).length.toString()
+            );
+            (
+                uint16 statusCode,
+                string[] memory responseHeaders,
+                string memory responseContent
+            ) = handler.handleRoute(
+                    HttpConstants.Method.GET,
+                    "/__bad_request",
+                    requestHeaders,
+                    bytes(reason)
+                );
 
-            messages.buildResponse(400, responseHeaders, responseContent);
+            // return value is used by inline assembly below
+            messages.buildResponse(
+                statusCode,
+                responseHeaders,
+                responseContent
+            );
         } catch Panic(uint256 reason) {
-            uint16 statusCode = 400;
-
-            string[] memory responseHeaders = new string[](1);
-            responseHeaders[0] = "Content-Type: text/html";
-
-            // TODO(nathanhleung) Create Solidity HTML DSL?
-            string memory responseContent = "";
-            responseContent = responseContent.concat(
-                "<!DOCTYPE html>"
-                "<html>"
-                "<head><title>400 Bad Request</title></head>"
-                "<body>"
-                "<h1>400 Bad Request</h1>",
-                (
-                    debug
-                        ? StringConcat.concat(
-                            "<p>",
-                            "Panic encountered while parsing HTTP request. Code: ",
-                            reason.toHexString(),
-                            "</p>"
-                        )
-                        : ""
-                ),
-                "<hr>"
-                "<p><i>fallback() web server</i></p>"
-                "</body>"
-                "</html>"
+            string[] memory requestHeaders = new string[](1);
+            requestHeaders[0] = StringConcat.concat(
+                "Content-Length",
+                // uint256 is 32 bytes
+                "32"
             );
+            (
+                uint16 statusCode,
+                string[] memory responseHeaders,
+                string memory responseContent
+            ) = handler.handleRoute(
+                    HttpConstants.Method.GET,
+                    "/__bad_request",
+                    requestHeaders,
+                    bytes(
+                        StringConcat.concat(
+                            "Solidity panicked while parsing HTTP request. Code: ",
+                            reason.toHexString()
+                        )
+                    )
+                );
 
-            messages.buildResponse(400, responseHeaders, responseContent);
+            messages.buildResponse(
+                statusCode,
+                responseHeaders,
+                responseContent
+            );
         }
 
         assembly {

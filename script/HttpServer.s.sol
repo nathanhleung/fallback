@@ -4,13 +4,13 @@ pragma solidity ^0.8.13;
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
 import "../src/HttpServer.sol";
-import "../src/ExampleApp.sol";
+import "../src/example/Example.sol";
 
 contract HttpServerTest is Script {
     HttpServer public httpServer;
 
     function setUp() public {
-        httpServer = new HttpServer(new ExampleApp());
+        httpServer = new ExampleServer();
     }
 
     function run() public {
@@ -35,5 +35,42 @@ contract HttpServerTest is Script {
             httpServer
         ).call(getGithubRequest);
         console.log(string(getGithubResponseBytes));
+
+        bytes memory getNotFoundRequest = bytes(
+            "GET /nonexistent HTTP/1.1\r\n"
+            "Host: 127.0.0.1\r\n"
+            "Accept-Language: en-US,en\r\n"
+        );
+
+        (
+            bool getNotFoundSuccess,
+            bytes memory getNotFoundResponseBytes
+        ) = address(httpServer).call(getNotFoundRequest);
+        console.log(string(getNotFoundResponseBytes));
+
+        bytes memory getErrorRequest = bytes(
+            "GET /error HTTP/1.1\r\n"
+            "Host: 127.0.0.1\r\n"
+            "Accept-Language: en-US,en\r\n"
+        );
+
+        (bool getErrorSuccess, bytes memory getErrorResponseBytes) = address(
+            httpServer
+        ).call(getErrorRequest);
+        console.log(string(getErrorResponseBytes));
+
+        bytes memory postFormRequest = bytes(
+            "POST /form HTTP/1.1\r\n"
+            "Host: 127.0.0.1\r\n"
+            "Accept-Language: en-US,en\r\n"
+            "Content-Length: 27\r\n"
+            "\r\n"
+            "name=nate&favorite_number=2"
+        );
+
+        (bool postFormSuccess, bytes memory postFormResponseBytes) = address(
+            httpServer
+        ).call(postFormRequest);
+        console.log(string(postFormResponseBytes));
     }
 }

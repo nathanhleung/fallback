@@ -4,13 +4,13 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import "../src/HttpServer.sol";
-import "../src/ExampleApp.sol";
+import "../src/example/Example.sol";
 
 contract HttpServerTest is Test {
     HttpServer public httpServer;
 
     function setUp() public {
-        httpServer = new HttpServer(new ExampleApp());
+        httpServer = new ExampleServer();
     }
 
     function testRequest() public {

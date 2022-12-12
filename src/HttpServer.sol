@@ -10,9 +10,9 @@ import "./WebApp.sol";
  * Solidity HTTP server.
  */
 contract HttpServer is HttpProxy, Ownable {
-    constructor(WebApp webApp) {
-        handler = new HttpHandler(webApp);
+    constructor(WebApp _app) {
+        app = _app;
+        handler = new HttpHandler(_app);
         messages = new HttpMessages();
-        debug = true;
     }
 }

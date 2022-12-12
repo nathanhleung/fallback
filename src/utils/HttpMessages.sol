@@ -3,8 +3,12 @@ pragma solidity ^0.8.13;
 
 import "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 import "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
+import "./HttpConstants.sol";
+import "./Integers.sol";
 import "./StringConcat.sol";
 import "./StringCase.sol";
+import "./StringStartsWith.sol";
+import "forge-std/console.sol";
 
 /**
  * Utility contract to for working with HTTP messages (i.e. requests and
@@ -13,45 +17,24 @@ import "./StringCase.sol";
 contract HttpMessages {
     using StringCase for string;
     using StringConcat for string;
+    using StringStartsWith for string;
     using Strings for uint16;
     using Strings for uint256;
 
-    enum Method {
-        GET,
-        POST
-    }
-
-    mapping(uint16 => string) statusCodeStrings;
-    mapping(string => Method) methodEnums;
-
+    HttpConstants constants = new HttpConstants();
     bytes1 constant SPACE_BYTE = hex"20";
     bytes1 constant CARRIAGE_RETURN_BYTE = hex"0D";
     bytes1 constant LINE_FEED_BYTE = hex"0A";
 
-    constructor() {
-        statusCodeStrings[200] = "OK";
-
-        statusCodeStrings[301] = "Moved Permanently";
-        statusCodeStrings[302] = "Found";
-
-        statusCodeStrings[400] = "Bad Request";
-        statusCodeStrings[401] = "Unauthorized";
-        statusCodeStrings[402] = "Payment Required";
-        statusCodeStrings[403] = "Forbidden";
-        statusCodeStrings[404] = "Not Found";
-
-        statusCodeStrings[500] = "Internal Server Error";
-        statusCodeStrings[502] = "Bad Gateway";
-        statusCodeStrings[503] = "Service Unavailable";
-
-        methodEnums["get"] = Method.GET;
-        methodEnums["post"] = Method.POST;
-    }
-
-    function getNextNonSpaceIndex(uint256 startIndex, bytes memory messageBytes)
-        private
-        returns (uint256 nextNonSpaceIndex)
-    {
+    /**
+     * Gets the next non-space character's index,
+     * starting at `startIndex`. If the character at
+     * `startIndex` is already a space, returns immediately.
+     */
+    function getNextNonSpaceIndex(
+        uint256 startIndex,
+        bytes calldata messageBytes
+    ) private returns (uint256 nextNonSpaceIndex) {
         uint256 i = startIndex;
 
         while (messageBytes[i] == SPACE_BYTE) {
@@ -65,9 +48,39 @@ contract HttpMessages {
         return i;
     }
 
-    function parseRequestRoute(bytes memory requestBytes)
+    /**
+     * Gets the index of the start of the next (HTTP) line,
+     * starting at `startIndex`. Specifically, it looks for the
+     * first index after the next `\r\n`. If `startIndex` is
+     * already a `\n` after a `\r`, returns immediately.
+     */
+    function getNextLineIndex(uint256 startIndex, bytes calldata messageBytes)
         private
-        returns (Method method, string memory path)
+        returns (uint256 nextLineIndex)
+    {
+        uint256 i = startIndex;
+
+        // Need to increment so we can safely look back for a `\r`.
+        if (i == 0) {
+            i += 1;
+        }
+
+        // HTTP uses `\r\n` newlines
+        // https://stackoverflow.com/questions/27966357/new-line-definition-for-http-1-1-headers
+        while (
+            messageBytes[i - 1] != CARRIAGE_RETURN_BYTE &&
+            messageBytes[i] != LINE_FEED_BYTE
+        ) {
+            i += 1;
+        }
+
+        i += 1;
+        return i;
+    }
+
+    function parseRequestRoute(bytes calldata requestBytes)
+        private
+        returns (HttpConstants.Method method, string memory path)
     {
         uint256 i = getNextNonSpaceIndex(0, requestBytes);
         uint256 methodStartIndex = i;
@@ -81,7 +94,7 @@ contract HttpMessages {
             methodBytes[i - methodStartIndex] = requestBytes[i];
             i += 1;
         }
-        method = methodEnums[string(methodBytes).toLowerCase()];
+        method = constants.METHOD_ENUMS(string(methodBytes).toLowerCase());
 
         // requestBytes[i] is now a space, so we increment by 1
         // to get the path
@@ -97,13 +110,13 @@ contract HttpMessages {
             pathLength += 1;
             i += 1;
         }
-        // TODO(nathanhleung) is there a better way than just copying?
-        // need to pack so we can index in route map
-        bytes memory packedPathBytes = new bytes(pathLength);
-        for (uint256 j = 0; j < pathLength; j += 1) {
-            packedPathBytes[j] = pathBytes[j];
+
+        // TODO(nathanhleung) pack other large array allocations
+        // https://ethereum.stackexchange.com/questions/51891/how-to-pop-from-decrease-the-length-of-a-memory-array-in-solidity
+        assembly {
+            mstore(pathBytes, sub(mload(pathBytes), sub(4000, pathLength)))
         }
-        path = string(packedPathBytes);
+        path = string(pathBytes);
 
         return (method, path);
     }
@@ -111,30 +124,17 @@ contract HttpMessages {
     /**
      * Parses request headers from the raw request.
      */
-    function parseRequestHeaders(bytes memory requestBytes)
+    function parseRequestHeaders(bytes calldata requestBytes)
         private
         returns (
-            uint256 headersEndIndex,
+            uint256 contentStartIndex,
             string[] memory requestHeaders,
             uint256 contentLength
         )
     {
-        // Start from 1 since we look back to check for newlines
-        uint256 i = 1;
-
-        // Skip to the end of the first line. HTTP uses `\r\n`
-        // newlines, so look for that.
-        // https://stackoverflow.com/questions/27966357/new-line-definition-for-http-1-1-headers
-        while (
-            requestBytes[i - 1] != CARRIAGE_RETURN_BYTE &&
-            requestBytes[i] != LINE_FEED_BYTE
-        ) {
-            i += 1;
-        }
-
-        // requestBytes[i] is now the line feed at the end of the
-        // first line. We increment to start parsing the headers.
-        i += 1;
+        // Skip to the start of the next line (first line
+        // is HTTP method and path).
+        uint256 i = getNextLineIndex(0, requestBytes);
 
         // Loop through headers until we get two line breaks in a row
         contentLength = 0;
@@ -148,6 +148,7 @@ contract HttpMessages {
             requestBytes[i] != LINE_FEED_BYTE
         ) {
             uint256 headerStartIndex = i;
+            uint256 headerLength = 0;
             // TODO(nathanhleung) assume 4000 characters per header?
             // Maybe make all this stuff configurable
             bytes memory headerBytes = new bytes(4000);
@@ -155,23 +156,45 @@ contract HttpMessages {
                 requestBytes[i - 1] != CARRIAGE_RETURN_BYTE &&
                 requestBytes[i] != LINE_FEED_BYTE
             ) {
+                console.log("in individual header loop");
                 headerBytes[i - headerStartIndex] = requestBytes[i];
+                headerLength += 1;
                 i += 1;
             }
             // At this point, we've reached the end of the line
-            // Remove the trailing \r\n and then add to headers array
-            headerBytes[i - 1] = hex"00";
-            headerBytes[i] = hex"00";
+            // requestBytes[i] is the line feed; the last index of
+            // headerBytes is a carriage return which we should
+            // remove.
+            headerLength -= 1;
+
+            // Change string length to actual length rather than
+            // allocated length
+            // https://ethereum.stackexchange.com/questions/51891/how-to-pop-from-decrease-the-length-of-a-memory-array-in-solidity
+            assembly {
+                mstore(
+                    headerBytes,
+                    sub(mload(headerBytes), sub(4000, headerLength))
+                )
+            }
             string memory headerString = string(headerBytes);
 
             requestHeaders[requestHeadersCount] = headerString;
             requestHeadersCount += 1;
 
-            // TODO(nathanhleung) implement content length
-            // if (headerString.toLowerCase().startsWith("content-length: ")) {
-            //     // get last part, then convert to int
-            //     contentLength = headerString
-            // }
+            if (headerString.toLowerCase().startsWith("content-length: ")) {
+                uint256 headerLength = headerBytes.length;
+                // "content-length: " is 16 characters
+                bytes memory contentLengthBytes = new bytes(headerLength - 16);
+                for (uint256 j = 16; j < headerLength; j += 1) {
+                    contentLengthBytes[j - 16] = headerBytes[j];
+                }
+
+                console.log(headerString);
+                console.logBytes(contentLengthBytes);
+                console.log(Integers.parseInt(string(contentLengthBytes)) * 2);
+                console.log("parseInt");
+                // contentLength = headerString
+            }
 
             // requestBytes[i] is now the line feed at the end of the header
             // Increment to move onto the next header
@@ -192,43 +215,60 @@ contract HttpMessages {
         return (i, requestHeaders, contentLength);
     }
 
+    function parseRequestContent(
+        uint256 startIndex,
+        uint256 contentLength,
+        bytes calldata requestBytes
+    ) private returns (bytes memory requestContent) {
+        // Start iterating thru the request content after the headers
+        uint256 i = startIndex;
+        uint256 contentStartIndex = i;
+        requestContent = new bytes(contentLength);
+        // Make sure we don't go out of bounds
+        uint256 contentEndIndex = Math.min(
+            contentStartIndex + contentLength,
+            requestBytes.length - 1
+        );
+        while (i < contentEndIndex) {
+            requestContent[i - contentStartIndex] = requestBytes[i];
+        }
+        return requestContent;
+    }
+
     /**
      * Given the raw bytes of an HTTP request, parses out the
      * method, headers, and request body.
      *
      * TODO(nathanhleung): better handling of pathological cases
      */
-    function parseRequest(bytes memory requestBytes)
+    function parseRequest(bytes calldata requestBytes)
         external
         returns (
-            Method method,
+            HttpConstants.Method,
             string memory path,
             string[] memory requestHeaders,
             bytes memory requestContent
         )
     {
-        (Method method, string memory path) = parseRequestRoute(requestBytes);
+        (HttpConstants.Method method, string memory path) = parseRequestRoute(
+            requestBytes
+        );
 
         // Skip HTTP version and just get headers for now.
         // TODO(nathanhleung): handle different HTTP versions?
         (
-            uint256 headersEndIndex,
+            uint256 contentStartIndex,
             string[] memory requestHeaders,
             uint256 contentLength
         ) = parseRequestHeaders(requestBytes);
 
-        // Start iterating thru the request after the headers
-        uint256 i = headersEndIndex;
-        uint256 contentStartIndex = i;
-        requestContent = new bytes(contentLength);
-        // Make sure we don't go out of bounds
-        uint256 contentEndIndex = Math.min(
-            contentStartIndex + contentLength,
-            requestBytes.length
+        console.log("parsed headers");
+
+        requestContent = parseRequestContent(
+            contentStartIndex,
+            contentLength,
+            requestBytes
         );
-        while (i < contentEndIndex) {
-            requestContent[i - contentStartIndex] = requestBytes[i];
-        }
 
         return (method, path, requestHeaders, requestContent);
     }
@@ -242,13 +282,13 @@ contract HttpMessages {
         uint16 statusCode,
         string[] calldata responseHeaders,
         string calldata responseContent
-    ) external returns (bytes memory responseBytes) {
+    ) external view returns (bytes memory responseBytes) {
         string memory responseHeadersString = "";
         responseHeadersString = responseHeadersString.concat(
             "HTTP/1.1 ",
             statusCode.toString(),
             " ",
-            statusCodeStrings[statusCode],
+            constants.STATUS_CODE_STRINGS(statusCode),
             "\r\n",
             "Server: fallback()\r\n"
         );

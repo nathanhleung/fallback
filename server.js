@@ -3,8 +3,10 @@ const net = require("net");
 
 const ETHEREUM_RPC_HOST = process.env.ETHEREUM_RPC_HOST || "127.0.0.1";
 const ETHEREUM_RPC_PORT = process.env.ETHEREUM_RPC_PORT || 8545;
-const CONTRACT_ADDRESS = process.env.ADDRESS;
+const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
 
+// TODO(nathanhleung)
+// Create another server that uses eth_sendTransaction instead of eth_call?
 async function handleRequest(requestData) {
   return new Promise((resolve) => {
     const jsonRpcData = JSON.stringify({
@@ -42,10 +44,19 @@ async function handleRequest(requestData) {
 
 const server = net.createServer((socket) => {
   socket.on("data", async (requestData) => {
-    const response = JSON.parse(await handleRequest(requestData));
-    const responseData = Buffer.from(response.result.slice(2), "hex");
-    socket.write(responseData.toString());
-    socket.end();
+    let response = JSON.parse(await handleRequest(requestData));
+
+    try {
+      if (response.result.length > 0) {
+        const responseData = Buffer.from(response.result.slice(2), "hex");
+        socket.write(responseData.toString());
+      }
+      socket.end();
+    } catch (err) {
+      console.error(response);
+      console.error(err.toString());
+      socket.end();
+    }
   });
 });
 
