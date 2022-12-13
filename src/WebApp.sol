@@ -140,6 +140,7 @@ abstract contract WebApp is Ownable {
     fallback() external {
         (string[] memory requestHeaders, bytes memory requestContent) = abi
             .decode(msg.data, (string[], bytes));
+
         handleNotFound(requestHeaders, requestContent);
         assembly {
             // https://ethereum.stackexchange.com/questions/131771/when-writing-assembly-to-which-memory-address-should-i-start-writing

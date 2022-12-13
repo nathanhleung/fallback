@@ -1,38 +1,24 @@
 pragma solidity ^0.8.13;
 
+import "forge-std/console.sol";
+
 /**
- * Integers Library
- *
- * Subset of https://github.com/willitscale/solidity-util/blob/master/lib/Integers.sol
- *
- * @author James Lockhart <james@n3tw0rk.co.uk>
+ * Library for working with integers.
  */
 library Integers {
     /**
-     * Parse Int
+     * Converts a string to an int.
      *
-     * Converts an ASCII string value into an uint as long as the string
-     * its self is a valid unsigned integer
-     *
-     * @param _value The ASCII string to be converted to an unsigned integer
-     * @return _ret The unsigned value of the ASCII string
+     * https://ethereum.stackexchange.com/a/18035
      */
-    function parseInt(string memory _value) public pure returns (uint256 _ret) {
-        bytes memory _bytesValue = bytes(_value);
-        uint256 j = 1;
-        for (
-            uint256 i = _bytesValue.length - 1;
-            i >= 0 && i < _bytesValue.length;
-            i--
-        ) {
-            assert(uint8(_bytesValue[i]) >= 48 && uint8(_bytesValue[i]) <= 57);
-            _ret += (uint8(_bytesValue[i]) - 48) * j;
-            j *= 10;
-
-            if (i == 1) {
-                break;
+    function parseInt(string memory s) internal pure returns (uint256) {
+        bytes memory b = bytes(s);
+        uint256 result = 0;
+        for (uint256 i = 0; i < b.length; i++) {
+            if (b[i] >= hex"30" && b[i] <= hex"39") {
+                result = result * 10 + (uint8(b[i]) - 48);
             }
         }
-        return _ret;
+        return result;
     }
 }

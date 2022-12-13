@@ -90,9 +90,14 @@ contract HttpMessages {
         // should suffice.
         // https://stackoverflow.com/questions/41411152/how-many-http-verbs-are-there
         bytes memory methodBytes = new bytes(32);
+        uint256 methodLength = 0;
         while (requestBytes[i] != SPACE_BYTE) {
             methodBytes[i - methodStartIndex] = requestBytes[i];
+            methodLength += 1;
             i += 1;
+        }
+        assembly {
+            mstore(methodBytes, sub(mload(methodBytes), sub(32, methodLength)))
         }
         method = constants.METHOD_ENUMS(string(methodBytes).toLowerCase());
 
@@ -141,12 +146,7 @@ contract HttpMessages {
         // TODO(nathanhleung) is 1000 headers a reasonable upper bound?
         requestHeaders = new string[](1000);
         uint256 requestHeadersCount = 0;
-        while (
-            requestBytes[i - 3] != CARRIAGE_RETURN_BYTE &&
-            requestBytes[i - 2] != LINE_FEED_BYTE &&
-            requestBytes[i - 1] != CARRIAGE_RETURN_BYTE &&
-            requestBytes[i] != LINE_FEED_BYTE
-        ) {
+        while (i < requestBytes.length) {
             uint256 headerStartIndex = i;
             uint256 headerLength = 0;
             // TODO(nathanhleung) assume 4000 characters per header?
@@ -156,7 +156,6 @@ contract HttpMessages {
                 requestBytes[i - 1] != CARRIAGE_RETURN_BYTE &&
                 requestBytes[i] != LINE_FEED_BYTE
             ) {
-                console.log("in individual header loop");
                 headerBytes[i - headerStartIndex] = requestBytes[i];
                 headerLength += 1;
                 i += 1;
@@ -188,29 +187,19 @@ contract HttpMessages {
                 for (uint256 j = 16; j < headerLength; j += 1) {
                     contentLengthBytes[j - 16] = headerBytes[j];
                 }
-
-                console.log(headerString);
-                console.logBytes(contentLengthBytes);
-                console.log(Integers.parseInt(string(contentLengthBytes)) * 2);
-                console.log("parseInt");
-                // contentLength = headerString
+                contentLength = Integers.parseInt(string(contentLengthBytes));
             }
 
             // requestBytes[i] is now the line feed at the end of the header
             // Increment to move onto the next header
             i += 1;
 
-            // Don't overshoot
-            if (i >= requestBytes.length) {
+            // If the most recently parsed header was blank,
+            // it's the extra newline before the content.
+            if (headerLength == 0) {
                 break;
             }
         }
-
-        // requestBytes[i] is now the line feed at the end of the
-        // double line break after the headers. Increment and
-        // return so the top-level `parseRequest` function can
-        // consume the request content.
-        i += 1;
 
         return (i, requestHeaders, contentLength);
     }
@@ -227,11 +216,14 @@ contract HttpMessages {
         // Make sure we don't go out of bounds
         uint256 contentEndIndex = Math.min(
             contentStartIndex + contentLength,
-            requestBytes.length - 1
+            requestBytes.length
         );
+
         while (i < contentEndIndex) {
             requestContent[i - contentStartIndex] = requestBytes[i];
+            i += 1;
         }
+
         return requestContent;
     }
 
@@ -261,8 +253,6 @@ contract HttpMessages {
             string[] memory requestHeaders,
             uint256 contentLength
         ) = parseRequestHeaders(requestBytes);
-
-        console.log("parsed headers");
 
         requestContent = parseRequestContent(
             contentStartIndex,
