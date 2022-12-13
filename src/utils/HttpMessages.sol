@@ -195,8 +195,20 @@ contract HttpMessages {
             i += 1;
 
             // If the most recently parsed header was blank,
-            // it's the extra newline before the content.
+            // it's the extra newline before the content. Clean up
+            // the headers array and break.
             if (headerLength == 0) {
+                assembly {
+                    mstore(
+                        requestHeaders,
+                        sub(
+                            mload(requestHeaders),
+                            // Since the last header was blank,
+                            // there's actually one less header
+                            sub(1000, sub(requestHeadersCount, 1))
+                        )
+                    )
+                }
                 break;
             }
         }

@@ -117,13 +117,34 @@ abstract contract WebApp is Ownable {
         responseHeaders = new string[](1);
         responseHeaders[0] = "Content-Type: text/html";
 
+        // Stack too deep
+        string memory debugString;
+        {
+            string memory requestHeadersString = StringConcat.concat(
+                requestHeaders,
+                "\r\n"
+            );
+            debugString = H.div(
+                StringConcat.concat(
+                    H.h2("Request Headers"),
+                    H.pre(requestHeadersString),
+                    H.h2("Request Content"),
+                    H.p(
+                        requestContent.length > 0
+                            ? H.pre(string(requestContent))
+                            : "(empty)"
+                    )
+                )
+            );
+        }
+
         responseContent = H.html(
             StringConcat.concat(
                 H.head(H.title(statusCodeString)),
                 H.body(
                     StringConcat.concat(
                         H.h1(statusCodeString),
-                        H.p(debug ? string(requestContent) : ""),
+                        debug ? debugString : "",
                         H.hr(),
                         H.p(H.i("fallback() web server"))
                     )

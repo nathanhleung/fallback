@@ -67,15 +67,26 @@ library H {
         return customTag("head", children);
     }
 
+    function style(string memory children) internal returns (string memory) {
+        return customTag("style", children);
+    }
+
     function title(string memory children) internal returns (string memory) {
         return customTag("title", children);
     }
 
-    function metaWithAttributes(
-        string memory attributes,
-        string memory children
-    ) internal returns (string memory) {
-        return customTagWithAttributes("meta", attributes, children);
+    function metaWithAttributes(string memory attributes)
+        internal
+        returns (string memory)
+    {
+        return customSelfClosingTagWithAttributes("meta", attributes);
+    }
+
+    function linkWithAttributes(string memory attributes)
+        internal
+        returns (string memory)
+    {
+        return customSelfClosingTagWithAttributes("link", attributes);
     }
 
     function body(string memory children) internal returns (string memory) {
@@ -94,12 +105,35 @@ library H {
         return customTag("p", children);
     }
 
+    function span(string memory children) internal returns (string memory) {
+        return customTag("span", children);
+    }
+
+    function div(string memory children) internal returns (string memory) {
+        return customTag("div", children);
+    }
+
+    function divWithAttributes(string memory attributes, string memory children)
+        internal
+        returns (string memory)
+    {
+        return customTagWithAttributes("div", attributes, children);
+    }
+
     function ul(string memory children) internal returns (string memory) {
         return customTag("ul", children);
     }
 
     function li(string memory children) internal returns (string memory) {
         return customTag("li", children);
+    }
+
+    function pre(string memory children) internal returns (string memory) {
+        return customTag("pre", children);
+    }
+
+    function code(string memory children) internal returns (string memory) {
+        return customTag("code", children);
     }
 
     function aWithAttributes(string memory attributes, string memory children)
@@ -126,6 +160,13 @@ library H {
         string memory children
     ) internal returns (string memory) {
         return customTagWithAttributes("form", attributes, children);
+    }
+
+    function labelWithAttributes(
+        string memory attributes,
+        string memory children
+    ) internal returns (string memory) {
+        return customTagWithAttributes("label", attributes, children);
     }
 
     function inputWithAttributes(string memory attributes)
