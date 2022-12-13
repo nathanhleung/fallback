@@ -13,11 +13,19 @@ library StringConcat {
         return string.concat(s1, s2);
     }
 
-    function concat(string[] memory ss) internal pure returns (string memory) {
-        return concat(ss, ",");
+    /**
+     * Concatenates an array of strings, placing a comma in
+     * between each successive string.
+     */
+    function join(string[] memory ss) internal pure returns (string memory) {
+        return join(ss, ",");
     }
 
-    function concat(string[] memory ss, string memory joiner)
+    /**
+     * Concatenates an array of strings, placing `joiner` in
+     * between each successive string.
+     */
+    function join(string[] memory ss, string memory joiner)
         internal
         pure
         returns (string memory)
@@ -30,6 +38,10 @@ library StringConcat {
             result = StringConcat.concat(result, ss[i]);
         }
         return result;
+    }
+
+    function concat(string[] memory ss) internal pure returns (string memory) {
+        return join(ss, "");
     }
 
     function concat(

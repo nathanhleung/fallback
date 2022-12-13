@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import "./utils/H.sol";
 import "./utils/HttpConstants.sol";
 import "./utils/StringConcat.sol";
 import "./WebApp.sol";
-import "forge-std/console.sol";
 
 /**
  * Maps HTTP requests to the correct routes in the `WebApp`,
@@ -13,6 +13,7 @@ import "forge-std/console.sol";
  */
 contract HttpHandler {
     using StringConcat for string;
+    using Strings for uint256;
 
     WebApp public app;
 
@@ -24,42 +25,69 @@ contract HttpHandler {
      * Calls the correct function on the web app contract based
      * on the route passed in.
      */
-    function handleRoute(
-        HttpConstants.Method method,
-        string memory path,
-        string[] memory requestHeaders,
-        bytes calldata requestContent
-    )
+    function handleRoute(HttpMessages.Request memory request)
         external
-        returns (
-            uint16 statusCode,
-            string[] memory responseHeaders,
-            string memory responseContent
-        )
+        returns (HttpMessages.Response memory)
     {
-        string memory routeHandlerName = app.routes(method, path);
+        string memory routeHandlerName = app.routes(
+            request.method,
+            request.path
+        );
 
-        // If route is unset, return 404
+        // If route is unset in `routes` mapping, return 404
         if (bytes(routeHandlerName).length == 0) {
-            (
-                uint16 _statusCode,
-                string[] memory _responseHeaders,
-                string memory _responseContent
-            ) = app.handleNotFound(requestHeaders, requestContent);
-
-            return (_statusCode, _responseHeaders, _responseContent);
+            return
+                app.handleNotFound(
+                    request,
+                    request.path.concat(" not found on this server")
+                );
         }
 
+        // All routes should take a `Request` struct.
+        // But we should also handle omitted params in case someone
+        // forgets.
+        string[] memory possibleSignatures = new string[](2);
+        possibleSignatures[0] = "((uint8,string,string[],uint256,bytes,bytes))";
+        possibleSignatures[1] = "()";
+
+        for (uint256 i = 0; i < possibleSignatures.length; i += 1) {
+            HttpMessages.Response memory response = safeCallApp(
+                request,
+                routeHandlerName.concat(possibleSignatures[i])
+            );
+
+            // If we found a valid route, return the successful
+            // response.
+            if (response.statusCode != 404) {
+                return response;
+            }
+
+            // If we're on the last signature AND it's a 404
+            // return the 404 page with a message saying we
+            // didn't find the route.
+            if (i + 1 == possibleSignatures.length) {
+                return
+                    app.handleNotFound(
+                        request,
+                        StringConcat.concat(
+                            request.path,
+                            " not found on this server"
+                        )
+                    );
+            }
+        }
+    }
+
+    /**
+     * Calls the function on the app contract with the given
+     * signature, passing the params.
+     */
+    function safeCallApp(
+        HttpMessages.Request memory request,
+        string memory signature
+    ) private returns (HttpMessages.Response memory) {
         (bool success, bytes memory data) = address(app).call(
-            abi.encodeWithSignature(
-                // All routes have a signature of `routeName(string[],bytes)`
-                StringConcat.concat(
-                    app.routes(method, path),
-                    "(string[],bytes)"
-                ),
-                requestHeaders,
-                requestContent
-            )
+            abi.encodeWithSignature(signature, request)
         );
 
         // If unsuccessful call, return 500
@@ -71,22 +99,14 @@ contract HttpHandler {
             }
             string memory revertReason = abi.decode(data, (string));
 
-            (
-                uint16 _statusCode,
-                string[] memory _responseHeaders,
-                string memory _responseContent
-            ) = app.handleError(requestHeaders, bytes(revertReason));
-
-            return (_statusCode, _responseHeaders, _responseContent);
+            return
+                app.handleError(
+                    request,
+                    StringConcat.concat("Error(", revertReason, ")")
+                );
         }
 
-        (
-            uint16 _statusCode,
-            string[] memory _responseHeaders,
-            string memory _responseContent
-        ) = abi.decode(data, (uint16, string[], string));
-
-        return (_statusCode, _responseHeaders, _responseContent);
+        return abi.decode(data, (HttpMessages.Response));
     }
 }
 
@@ -124,83 +144,43 @@ contract HttpProxy {
 
         // If we hit an error in parsing, we return 400
         try messages.parseRequest(requestBytes) returns (
-            HttpConstants.Method method,
-            string memory path,
-            string[] memory requestHeaders,
-            bytes memory requestContent
+            HttpMessages.Request memory request
         ) {
-            (
-                uint16 statusCode,
-                string[] memory responseHeaders,
-                string memory responseContent
-            ) = handler.handleRoute(
-                    method,
-                    path,
-                    requestHeaders,
-                    requestContent
+            try handler.handleRoute(request) returns (
+                HttpMessages.Response memory response
+            ) {
+                // return value is used by inline assembly below
+                messages.buildResponse(response);
+                // `handleRoute` handles reverts internally,
+                // but it can still `Panic`. `try` only works
+                // with external function calls, so we check here.
+            } catch Panic(uint256 reason) {
+                HttpMessages.Response memory response = app.handleError(
+                    request,
+                    StringConcat.concat("Panic(", reason.toString(), ")")
                 );
 
-            // return value is used by inline assembly below
-            messages.buildResponse(
-                statusCode,
-                responseHeaders,
-                responseContent
-            );
+                messages.buildResponse(response);
+            }
         } catch Error(string memory reason) {
-            string[] memory requestHeaders = new string[](2);
-            requestHeaders[0] = StringConcat.concat(
-                "Content-Type",
-                "text/plain"
+            HttpMessages.Request memory request;
+            request.raw = requestBytes;
+            HttpMessages.Response memory response = app.handleError(
+                request,
+                StringConcat.concat("Error(", reason, ")")
             );
-            requestHeaders[1] = StringConcat.concat(
-                "Content-Length",
-                bytes(reason).length.toString()
-            );
-            (
-                uint16 statusCode,
-                string[] memory responseHeaders,
-                string memory responseContent
-            ) = handler.handleRoute(
-                    HttpConstants.Method.GET,
-                    "/__bad_request",
-                    requestHeaders,
-                    bytes(reason)
-                );
 
             // return value is used by inline assembly below
-            messages.buildResponse(
-                statusCode,
-                responseHeaders,
-                responseContent
-            );
+            messages.buildResponse(response);
         } catch Panic(uint256 reason) {
-            string[] memory requestHeaders = new string[](1);
-            requestHeaders[0] = StringConcat.concat(
-                "Content-Length",
-                // uint256 is 32 bytes
-                "32"
+            HttpMessages.Request memory request;
+            request.raw = requestBytes;
+            HttpMessages.Response memory response = app.handleBadRequest(
+                request,
+                StringConcat.concat("Panic(", reason.toString(), ")")
             );
-            (
-                uint16 statusCode,
-                string[] memory responseHeaders,
-                string memory responseContent
-            ) = handler.handleRoute(
-                    HttpConstants.Method.GET,
-                    "/__bad_request",
-                    requestHeaders,
-                    bytes(
-                        StringConcat.concat(
-                            "Solidity panicked while parsing HTTP request. Code: ",
-                            reason.toHexString()
-                        )
-                    )
-                );
 
-            messages.buildResponse(
-                statusCode,
-                responseHeaders,
-                responseContent
-            );
+            messages.buildResponse(response);
         }
 
         assembly {

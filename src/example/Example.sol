@@ -6,6 +6,70 @@ import "../HttpServer.sol";
 import "../WebApp.sol";
 import "../utils/HttpMessages.sol";
 
+library ExampleComponents {
+    function navbar() internal returns (string memory) {
+        HComponents.NavbarLink[] memory links = new HComponents.NavbarLink[](6);
+        // Stack too deep
+        {
+            HComponents.NavbarLink memory homeLink;
+            homeLink.href = "/";
+            homeLink.children = "Home";
+            links[0] = homeLink;
+
+            HComponents.NavbarLink memory debugLink;
+            debugLink.href = "/debug";
+            debugLink.children = "Debug";
+            links[1] = debugLink;
+
+            HComponents.NavbarLink memory notFoundLink;
+            notFoundLink.href = "/nonexistent";
+            notFoundLink.children = "Nonexistent";
+            links[2] = notFoundLink;
+
+            HComponents.NavbarLink memory errorLink;
+            errorLink.href = "/error";
+            errorLink.children = "Error";
+            links[3] = errorLink;
+
+            HComponents.NavbarLink memory panicLink;
+            panicLink.href = "/panic";
+            panicLink.children = "Panic";
+            links[4] = panicLink;
+
+            HComponents.NavbarLink memory githubLink;
+            githubLink.href = "/github";
+            githubLink.children = "GitHub";
+            links[5] = githubLink;
+        }
+
+        return HComponents.navbar(links);
+    }
+
+    /** Base layout to be used by other pages */
+    function layout(string memory head, string memory body)
+        internal
+        returns (string memory)
+    {
+        return
+            H.html(
+                StringConcat.concat(
+                    H.head(
+                        StringConcat.concat(
+                            H.title("fallback() Web Server"),
+                            H.meta('charset="utf-8"'),
+                            H.meta(
+                                'name="viewport" content="width=device-width, initial-scale=1"'
+                            ),
+                            HComponents.styles(),
+                            head
+                        )
+                    ),
+                    H.body(StringConcat.concat(navbar(), body))
+                )
+            );
+    }
+}
+
 /**
  * Example web app. Add routes here.
  */
@@ -15,126 +79,40 @@ contract ExampleApp is WebApp {
         routes[HttpConstants.Method.POST]["/form"] = "postForm";
         routes[HttpConstants.Method.GET]["/debug"] = "getDebug";
         routes[HttpConstants.Method.GET]["/error"] = "getError";
+        routes[HttpConstants.Method.GET]["/panic"] = "getPanic";
         routes[HttpConstants.Method.GET]["/github"] = "getGithub";
     }
 
-    /** Base layout to be used by other pages */
-    function layout(string memory head, string memory body)
-        private
-        returns (string memory)
-    {
-        return
-            H.html(
-                StringConcat.concat(
-                    H.head(
-                        StringConcat.concat(
-                            H.title("fallback() Web Server"),
-                            H.metaWithAttributes('charset="utf-8"'),
-                            H.metaWithAttributes(
-                                'name="viewport" content="width=device-width, initial-scale=1"'
-                            ),
-                            H.style(
-                                // https://css-tricks.com/snippets/css/system-font-stack/
-                                "body {"
-                                'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";'
-                                "padding: 50px;"
-                                "}"
-                                ".navbar > ul { list-style-type: none; padding: 0; }"
-                                ".navbar > ul > li { display: inline-block; margin-right: 40px; }"
-                            ),
-                            head
-                        )
-                    ),
-                    H.body(
-                        StringConcat.concat(
-                            H.divWithAttributes(
-                                "class='navbar'",
-                                H.ul(
-                                    StringConcat.concat(
-                                        H.li(
-                                            H.aWithAttributes(
-                                                'href="/"',
-                                                "Home"
-                                            )
-                                        ),
-                                        H.li(
-                                            H.aWithAttributes(
-                                                'href="/debug"',
-                                                "Debug"
-                                            )
-                                        ),
-                                        H.li(
-                                            H.aWithAttributes(
-                                                'href="/nonexistent"',
-                                                "Not Found"
-                                            )
-                                        ),
-                                        H.li(
-                                            H.aWithAttributes(
-                                                'href="/error"',
-                                                "Error"
-                                            )
-                                        ),
-                                        H.li(
-                                            H.aWithAttributes(
-                                                'href="/github"',
-                                                "Github"
-                                            )
-                                        )
-                                    )
-                                )
-                            ),
-                            body
-                        )
-                    )
-                )
-            );
-    }
-
-    function getIndex(
-        string[] memory requestHeaders,
-        bytes memory requestContent
-    )
-        external
-        override
-        returns (
-            uint16 statusCode,
-            string[] memory responseHeaders,
-            string memory responseContent
-        )
-    {
-        statusCode = 200;
-
-        responseHeaders = new string[](1);
+    function getIndex() external returns (HttpMessages.Response memory) {
+        string[] memory responseHeaders = new string[](1);
         responseHeaders[0] = "Content-Type: text/html";
 
-        responseContent = layout(
+        HttpMessages.Response memory response;
+        response.statusCode = 200;
+        response.headers = responseHeaders;
+
+        response.content = ExampleComponents.layout(
             "",
             StringConcat.concat(
                 H.h1("fallback() Web Framework"),
                 H.p("Write web apps in Solidity"),
                 H.h2("Form"),
-                H.formWithAttributes(
+                H.form(
                     'action="/form" method="POST"',
                     StringConcat.concat(
-                        H.labelWithAttributes('for="name"', "Name"),
+                        H.label('for="name"', "Name"),
                         H.br(),
-                        H.inputWithAttributes(
-                            'type="text" name="name" placeholder="name"'
-                        ),
+                        H.input('type="text" name="name" placeholder="name"'),
                         H.br(),
                         H.br(),
-                        H.labelWithAttributes(
-                            'for="favorite_number"',
-                            "Favorite Number"
-                        ),
+                        H.label('for="favorite_number"', "Favorite Number"),
                         H.br(),
-                        H.inputWithAttributes(
+                        H.input(
                             'type="number" name="favorite_number" placeholder="favorite number"'
                         ),
                         H.br(),
                         H.br(),
-                        H.buttonWithAttributes('"type="submit"', "Submit")
+                        H.button('"type="submit"', "Submit")
                     )
                 ),
                 H.hr(),
@@ -142,33 +120,35 @@ contract ExampleApp is WebApp {
             )
         );
 
-        return (statusCode, responseHeaders, responseContent);
+        return response;
     }
 
-    function postForm(
-        string[] memory requestHeaders,
-        bytes memory requestContent
-    )
+    function getIndex(HttpMessages.Request calldata request)
         external
-        returns (
-            uint16 statusCode,
-            string[] memory responseHeaders,
-            string memory responseContent
-        )
+        override
+        returns (HttpMessages.Response memory)
     {
-        statusCode = 200;
+        return this.getIndex();
+    }
 
-        responseHeaders = new string[](1);
+    function postForm(HttpMessages.Request calldata request)
+        external
+        returns (HttpMessages.Response memory)
+    {
+        string[] memory responseHeaders = new string[](1);
         responseHeaders[0] = "Content-Type: text/html";
 
-        responseContent = layout(
+        HttpMessages.Response memory response;
+        response.statusCode = 200;
+        response.headers = responseHeaders;
+        response.content = ExampleComponents.layout(
             "",
             StringConcat.concat(
                 H.h1("fallback() Web Server"),
                 H.p(
                     StringConcat.concat(
                         "Received posted data: ",
-                        string(requestContent)
+                        string(request.content)
                     )
                 ),
                 H.hr(),
@@ -176,32 +156,22 @@ contract ExampleApp is WebApp {
             )
         );
 
-        return (statusCode, responseHeaders, responseContent);
+        return response;
     }
 
-    function getDebug(
-        string[] memory requestHeaders,
-        bytes memory requestContent
-    )
+    function getDebug(HttpMessages.Request calldata request)
         external
-        returns (
-            uint16 statusCode,
-            string[] memory responseHeaders,
-            string memory responseContent
-        )
+        returns (HttpMessages.Response memory)
     {
-        statusCode = 200;
-
-        responseHeaders = new string[](1);
+        string[] memory responseHeaders = new string[](1);
         responseHeaders[0] = "Content-Type: text/html";
 
-        // Construct in block to avoid stack too deep error
-        string memory requestHeadersString;
-        {
-            requestHeadersString = StringConcat.concat(requestHeaders, "\r\n");
-        }
+        string memory requestHeadersString = StringConcat.join(
+            request.headers,
+            "\r\n"
+        );
 
-        responseContent = layout(
+        string memory responseContent = ExampleComponents.layout(
             "",
             StringConcat.concat(
                 H.h1("fallback() Web Server"),
@@ -230,40 +200,32 @@ contract ExampleApp is WebApp {
             )
         );
 
-        return (statusCode, responseHeaders, responseContent);
+        HttpMessages.Response memory response;
+        response.statusCode = 200;
+        response.headers = responseHeaders;
+        response.content = responseContent;
+        return response;
     }
 
-    function getError(
-        string[] memory requestHeaders,
-        bytes memory requestContent
-    )
-        external
-        returns (
-            uint16 statusCode,
-            string[] memory responseHeaders,
-            string memory responseContent
-        )
-    {
+    function getError() external pure returns (HttpMessages.Response memory) {
         revert("Reverting from ExampleApp.getError");
     }
 
-    function getGithub(
-        string[] memory requestHeaders,
-        bytes memory requestContent
-    )
-        external
-        returns (
-            uint16 statusCode,
-            string[] memory responseHeaders,
-            string memory responseContent
-        )
-    {
-        responseHeaders = new string[](1);
+    function getPanic() external pure returns (HttpMessages.Response) {
+        string[] memory stringArray = new string[](0);
+        stringArray[1] = "This will cause a panic.";
+    }
+
+    function getGithub() external pure returns (HttpMessages.Response memory) {
+        string[] memory responseHeaders = new string[](1);
         responseHeaders[
             0
         ] = "Location: https://github.com/nathanhleung/fallback";
 
-        return (302, responseHeaders, "");
+        HttpMessages.Response memory response;
+        response.headers = responseHeaders;
+
+        return response;
     }
 }
 
@@ -271,8 +233,8 @@ contract ExampleApp is WebApp {
  * Example web server. Wraps the web app contract in HTTP request
  * parsing code, sends proper HTTP responses.
  */
-contract ExampleServer is HttpServer {
-    constructor() HttpServer(new ExampleApp()) {
+contract ExampleServer is DefaultServer {
+    constructor() DefaultServer(new ExampleApp()) {
         app.setDebug(true);
     }
 }

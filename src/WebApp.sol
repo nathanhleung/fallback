@@ -6,7 +6,6 @@ import "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import "./utils/H.sol";
 import "./utils/HttpConstants.sol";
 import "./utils/HttpMessages.sol";
-import "forge-std/console.sol";
 
 /**
  * Web app developers need to implement this contract, then pass it to
@@ -31,114 +30,91 @@ abstract contract WebApp is Ownable {
     constructor() {
         routes[HttpConstants.Method.GET]["/"] = "getIndex";
 
-        // Internal routes, do not edit
-        routes[HttpConstants.Method.GET]["/__not_found"] = "handleNotFound";
-        routes[HttpConstants.Method.GET]["/__bad_request"] = "handleBadRequest";
-        routes[HttpConstants.Method.GET]["/__error"] = "handleError";
+        // In debug mode, expose test error pages
+        if (debug) {
+            routes[HttpConstants.Method.GET]["/__not_found"] = "handleNotFound";
+            routes[HttpConstants.Method.GET][
+                "/__bad_request"
+            ] = "handleBadRequest";
+            routes[HttpConstants.Method.GET]["/__error"] = "handleError";
+        }
     }
 
     function setDebug(bool _debug) external onlyOwner {
         debug = _debug;
     }
 
-    function getIndex(
-        string[] memory requestHeaders,
-        bytes memory requestContent
-    )
+    function getIndex(HttpMessages.Request calldata request)
         external
         virtual
-        returns (
-            uint16 statusCode,
-            string[] memory responseHeaders,
-            string memory responseContent
-        )
-    {}
+        returns (HttpMessages.Response memory);
 
     function handleNotFound(
-        string[] memory requestHeaders,
-        bytes memory requestContent
-    )
-        public
-        returns (
-            uint16 statusCode,
-            string[] memory responseHeaders,
-            string memory responseContent
-        )
-    {
-        return handleStatusCode(requestHeaders, requestContent, 404);
+        HttpMessages.Request memory request,
+        string memory errorMessage
+    ) public virtual returns (HttpMessages.Response memory) {
+        return handleStatusCode(request, 404, errorMessage);
     }
 
     function handleBadRequest(
-        string[] memory requestHeaders,
-        bytes memory requestContent
-    )
-        external
-        returns (
-            uint16 statusCode,
-            string[] memory responseHeaders,
-            string memory responseContent
-        )
-    {
-        return handleStatusCode(requestHeaders, requestContent, 400);
+        HttpMessages.Request calldata request,
+        string memory errorMessage
+    ) external virtual returns (HttpMessages.Response memory) {
+        return handleStatusCode(request, 400, errorMessage);
     }
 
     function handleError(
-        string[] memory requestHeaders,
-        bytes memory requestContent
-    )
-        external
-        returns (
-            uint16 statusCode,
-            string[] memory responseHeaders,
-            string memory responseContent
-        )
-    {
-        return handleStatusCode(requestHeaders, requestContent, 500);
+        HttpMessages.Request calldata request,
+        string memory errorMessage
+    ) external virtual returns (HttpMessages.Response memory) {
+        return handleStatusCode(request, 500, errorMessage);
     }
 
     function handleStatusCode(
-        string[] memory requestHeaders,
-        bytes memory requestContent,
-        uint16 statusCode
-    )
-        internal
-        returns (
-            uint16,
-            string[] memory responseHeaders,
-            string memory responseContent
-        )
-    {
+        HttpMessages.Request memory request,
+        uint16 statusCode,
+        string memory errorMessage
+    ) internal virtual returns (HttpMessages.Response memory) {
         string memory statusCodeString = StringConcat.concat(
             statusCode.toString(),
             " ",
             c.STATUS_CODE_STRINGS(statusCode)
         );
 
-        responseHeaders = new string[](1);
+        string[] memory responseHeaders = new string[](1);
         responseHeaders[0] = "Content-Type: text/html";
 
         // Stack too deep
+        string memory requestHeadersString;
+        {
+            requestHeadersString = StringConcat.join(request.headers, "\r\n");
+        }
+        string memory requestBytesString;
+        {
+            requestBytesString = string(request.raw);
+        }
+        string memory requestContentString;
+        {
+            requestContentString = request.contentLength > 0
+                ? H.pre(string(request.content))
+                : "(empty)";
+        }
         string memory debugString;
         {
-            string memory requestHeadersString = StringConcat.concat(
-                requestHeaders,
-                "\r\n"
-            );
             debugString = H.div(
                 StringConcat.concat(
-                    H.h2("Request Headers"),
+                    H.p(errorMessage),
+                    H.h2("Raw Request"),
+                    H.pre(requestBytesString),
+                    H.h2("Parsed Request Headers"),
                     H.pre(requestHeadersString),
-                    H.h2("Request Content"),
-                    H.p(
-                        requestContent.length > 0
-                            ? H.pre(string(requestContent))
-                            : "(empty)"
-                    )
+                    H.h2("Parsed Request Content"),
+                    H.p(requestContentString)
                 )
             );
         }
 
-        responseContent = H.html(
+        string memory responseContent = H.html(
             StringConcat.concat(
                 H.head(H.title(statusCodeString)),
                 H.body(
@@ -152,17 +128,24 @@ abstract contract WebApp is Ownable {
             )
         );
 
-        return (statusCode, responseHeaders, responseContent);
+        HttpMessages.Response memory response;
+        response.statusCode = statusCode;
+        response.headers = responseHeaders;
+        response.content = responseContent;
+        return response;
     }
 
     // TODO(nathanhleung)
     // test this -- need to set a route in the route map
     // but have the actual function be nonexistent
     fallback() external {
-        (string[] memory requestHeaders, bytes memory requestContent) = abi
-            .decode(msg.data, (string[], bytes));
+        HttpMessages.Request memory request = abi.decode(
+            msg.data,
+            (HttpMessages.Request)
+        );
 
-        handleNotFound(requestHeaders, requestContent);
+        // Message will be set in `handleRoute`.
+        handleNotFound(request, "");
         assembly {
             // https://ethereum.stackexchange.com/questions/131771/when-writing-assembly-to-which-memory-address-should-i-start-writing
             let freeMemoryPointer := mload(0x40)

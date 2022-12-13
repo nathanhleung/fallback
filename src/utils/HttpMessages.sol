@@ -7,7 +7,7 @@ import "./HttpConstants.sol";
 import "./Integers.sol";
 import "./StringConcat.sol";
 import "./StringCase.sol";
-import "./StringStartsWith.sol";
+import "./StringCompare.sol";
 import "forge-std/console.sol";
 
 /**
@@ -17,14 +17,77 @@ import "forge-std/console.sol";
 contract HttpMessages {
     using StringCase for string;
     using StringConcat for string;
-    using StringStartsWith for string;
+    using StringConcat for string[];
+    using StringCompare for string;
     using Strings for uint16;
     using Strings for uint256;
 
+    struct Options {
+        /**
+         * The maximum number of HTTP request headers to support.
+         */
+        uint256 maxRequestHeaders;
+        /**
+         * The maximum length of a single HTTP request header to support.
+         */
+        uint256 maxRequestHeaderLength;
+        /**
+         * The maximum path length to support.
+         */
+        uint256 maxPathLength;
+    }
+
+    struct Request {
+        /**
+         * The HTTP method of the request
+         */
+        HttpConstants.Method method;
+        /**
+         * The path of the request
+         */
+        string path;
+        /**
+         * Request headers
+         */
+        string[] headers;
+        /**
+         * Request content legnth
+         */
+        uint256 contentLength;
+        /**
+         * Request content
+         */
+        bytes content;
+        /**
+         * Raw request bytes
+         */
+        bytes raw;
+    }
+
+    struct Response {
+        /**
+         * Response status code
+         */
+        uint16 statusCode;
+        /**
+         * Response headers
+         */
+        string[] headers;
+        /**
+         * Response content
+         */
+        string content;
+    }
+
+    Options options;
     HttpConstants constants = new HttpConstants();
     bytes1 constant SPACE_BYTE = hex"20";
     bytes1 constant CARRIAGE_RETURN_BYTE = hex"0D";
     bytes1 constant LINE_FEED_BYTE = hex"0A";
+
+    constructor(Options memory _options) {
+        options = _options;
+    }
 
     /**
      * Gets the next non-space character's index,
@@ -34,7 +97,7 @@ contract HttpMessages {
     function getNextNonSpaceIndex(
         uint256 startIndex,
         bytes calldata messageBytes
-    ) private returns (uint256 nextNonSpaceIndex) {
+    ) private pure returns (uint256 nextNonSpaceIndex) {
         uint256 i = startIndex;
 
         while (messageBytes[i] == SPACE_BYTE) {
@@ -56,6 +119,7 @@ contract HttpMessages {
      */
     function getNextLineIndex(uint256 startIndex, bytes calldata messageBytes)
         private
+        pure
         returns (uint256 nextLineIndex)
     {
         uint256 i = startIndex;
@@ -80,6 +144,7 @@ contract HttpMessages {
 
     function parseRequestRoute(bytes calldata requestBytes)
         private
+        view
         returns (HttpConstants.Method method, string memory path)
     {
         uint256 i = getNextNonSpaceIndex(0, requestBytes);
@@ -105,10 +170,7 @@ contract HttpMessages {
         // to get the path
         i += 1;
         uint256 pathStartIndex = i;
-        // 4,000 characters for the path seems like a reasonable
-        // assumption based on this SO answer.
-        // https://stackoverflow.com/questions/1289585/what-is-apaches-maximum-url-length
-        bytes memory pathBytes = new bytes(4000);
+        bytes memory pathBytes = new bytes(options.maxPathLength);
         uint256 pathLength = 0;
         while (requestBytes[i] != SPACE_BYTE) {
             pathBytes[i - pathStartIndex] = requestBytes[i];
@@ -116,10 +178,14 @@ contract HttpMessages {
             i += 1;
         }
 
-        // TODO(nathanhleung) pack other large array allocations
+        // Change array size to actual size
         // https://ethereum.stackexchange.com/questions/51891/how-to-pop-from-decrease-the-length-of-a-memory-array-in-solidity
+        uint256 maxPathLength = options.maxPathLength;
         assembly {
-            mstore(pathBytes, sub(mload(pathBytes), sub(4000, pathLength)))
+            mstore(
+                pathBytes,
+                sub(mload(pathBytes), sub(maxPathLength, pathLength))
+            )
         }
         path = string(pathBytes);
 
@@ -131,6 +197,7 @@ contract HttpMessages {
      */
     function parseRequestHeaders(bytes calldata requestBytes)
         private
+        view
         returns (
             uint256 contentStartIndex,
             string[] memory requestHeaders,
@@ -143,15 +210,14 @@ contract HttpMessages {
 
         // Loop through headers until we get two line breaks in a row
         contentLength = 0;
-        // TODO(nathanhleung) is 1000 headers a reasonable upper bound?
-        requestHeaders = new string[](1000);
+        requestHeaders = new string[](options.maxRequestHeaders);
         uint256 requestHeadersCount = 0;
         while (i < requestBytes.length) {
             uint256 headerStartIndex = i;
             uint256 headerLength = 0;
-            // TODO(nathanhleung) assume 4000 characters per header?
-            // Maybe make all this stuff configurable
-            bytes memory headerBytes = new bytes(4000);
+            bytes memory headerBytes = new bytes(
+                options.maxRequestHeaderLength
+            );
             while (
                 requestBytes[i - 1] != CARRIAGE_RETURN_BYTE &&
                 requestBytes[i] != LINE_FEED_BYTE
@@ -169,10 +235,14 @@ contract HttpMessages {
             // Change string length to actual length rather than
             // allocated length
             // https://ethereum.stackexchange.com/questions/51891/how-to-pop-from-decrease-the-length-of-a-memory-array-in-solidity
+            uint256 maxRequestHeaderLength = options.maxRequestHeaderLength;
             assembly {
                 mstore(
                     headerBytes,
-                    sub(mload(headerBytes), sub(4000, headerLength))
+                    sub(
+                        mload(headerBytes),
+                        sub(maxRequestHeaderLength, headerLength)
+                    )
                 )
             }
             string memory headerString = string(headerBytes);
@@ -195,22 +265,27 @@ contract HttpMessages {
             i += 1;
 
             // If the most recently parsed header was blank,
-            // it's the extra newline before the content. Clean up
-            // the headers array and break.
+            // it's the extra newline before the content, so
+            // break.
             if (headerLength == 0) {
-                assembly {
-                    mstore(
-                        requestHeaders,
-                        sub(
-                            mload(requestHeaders),
-                            // Since the last header was blank,
-                            // there's actually one less header
-                            sub(1000, sub(requestHeadersCount, 1))
-                        )
-                    )
-                }
+                // Subtract blank header
+                requestHeadersCount -= 1;
                 break;
             }
+        }
+
+        // Resize headers array
+        uint256 maxRequestHeaders = options.maxRequestHeaders;
+        assembly {
+            mstore(
+                requestHeaders,
+                sub(
+                    mload(requestHeaders),
+                    // Since the last header was blank,
+                    // there's actually one less header
+                    sub(maxRequestHeaders, requestHeadersCount)
+                )
+            )
         }
 
         return (i, requestHeaders, contentLength);
@@ -220,7 +295,7 @@ contract HttpMessages {
         uint256 startIndex,
         uint256 contentLength,
         bytes calldata requestBytes
-    ) private returns (bytes memory requestContent) {
+    ) private pure returns (bytes memory requestContent) {
         // Start iterating thru the request content after the headers
         uint256 i = startIndex;
         uint256 contentStartIndex = i;
@@ -247,12 +322,8 @@ contract HttpMessages {
      */
     function parseRequest(bytes calldata requestBytes)
         external
-        returns (
-            HttpConstants.Method,
-            string memory path,
-            string[] memory requestHeaders,
-            bytes memory requestContent
-        )
+        view
+        returns (Request memory request)
     {
         (HttpConstants.Method method, string memory path) = parseRequestRoute(
             requestBytes
@@ -266,13 +337,19 @@ contract HttpMessages {
             uint256 contentLength
         ) = parseRequestHeaders(requestBytes);
 
-        requestContent = parseRequestContent(
+        bytes memory requestContent = parseRequestContent(
             contentStartIndex,
             contentLength,
             requestBytes
         );
 
-        return (method, path, requestHeaders, requestContent);
+        request.method = method;
+        request.path = path;
+        request.headers = requestHeaders;
+        request.contentLength = contentLength;
+        request.content = requestContent;
+        request.raw = requestBytes;
+        return request;
     }
 
     /**
@@ -280,37 +357,32 @@ contract HttpMessages {
      * and returns the raw bytes which can be sent back to the
      * client.
      */
-    function buildResponse(
-        uint16 statusCode,
-        string[] calldata responseHeaders,
-        string calldata responseContent
-    ) external view returns (bytes memory responseBytes) {
-        string memory responseHeadersString = "";
-        responseHeadersString = responseHeadersString.concat(
-            "HTTP/1.1 ",
-            statusCode.toString(),
-            " ",
-            constants.STATUS_CODE_STRINGS(statusCode),
-            "\r\n",
-            "Server: fallback()\r\n"
-        );
-
-        for (uint8 i = 0; i < responseHeaders.length; i += 1) {
-            responseHeadersString = responseHeadersString.concat(
-                responseHeaders[i],
-                "\r\n"
-            );
-        }
+    function buildResponse(Response memory response)
+        external
+        view
+        returns (bytes memory responseBytes)
+    {
+        string memory responseHeadersString = StringConcat
+            .concat(
+                "HTTP/1.1 ",
+                response.statusCode.toString(),
+                " ",
+                constants.STATUS_CODE_STRINGS(response.statusCode),
+                "\r\n",
+                "Server: fallback()\r\n"
+            )
+            .concat(response.headers.join("\r\n"));
 
         responseBytes = bytes(
             responseHeadersString.concat(
+                "\r\n",
                 "Date: ",
                 block.timestamp.toString(),
                 "\r\n"
                 "Content-Length: ",
-                bytes(responseContent).length.toString(),
+                bytes(response.content).length.toString(),
                 "\r\n\r\n",
-                responseContent
+                response.content
             )
         );
 

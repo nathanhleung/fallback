@@ -20,9 +20,9 @@ contract HttpServerTest is Script {
             "Accept-Language: en-US,en\r\n"
         );
 
-        (bool getIndexSuccess, bytes memory getIndexResponseBytes) = address(
-            httpServer
-        ).call(getIndexRequest);
+        (, bytes memory getIndexResponseBytes) = address(httpServer).call(
+            getIndexRequest
+        );
         console.log(string(getIndexResponseBytes));
 
         bytes memory getGithubRequest = bytes(
@@ -31,9 +31,9 @@ contract HttpServerTest is Script {
             "Accept-Language: en-US,en\r\n"
         );
 
-        (bool getGithubSuccess, bytes memory getGithubResponseBytes) = address(
-            httpServer
-        ).call(getGithubRequest);
+        (, bytes memory getGithubResponseBytes) = address(httpServer).call(
+            getGithubRequest
+        );
         console.log(string(getGithubResponseBytes));
 
         bytes memory getNotFoundRequest = bytes(
@@ -42,10 +42,9 @@ contract HttpServerTest is Script {
             "Accept-Language: en-US,en\r\n"
         );
 
-        (
-            bool getNotFoundSuccess,
-            bytes memory getNotFoundResponseBytes
-        ) = address(httpServer).call(getNotFoundRequest);
+        (, bytes memory getNotFoundResponseBytes) = address(httpServer).call(
+            getNotFoundRequest
+        );
         console.log(string(getNotFoundResponseBytes));
 
         bytes memory getErrorRequest = bytes(
@@ -54,9 +53,9 @@ contract HttpServerTest is Script {
             "Accept-Language: en-US,en\r\n"
         );
 
-        (bool getErrorSuccess, bytes memory getErrorResponseBytes) = address(
-            httpServer
-        ).call(getErrorRequest);
+        (, bytes memory getErrorResponseBytes) = address(httpServer).call(
+            getErrorRequest
+        );
         console.log(string(getErrorResponseBytes));
 
         bytes memory postFormRequest = bytes(
@@ -68,9 +67,9 @@ contract HttpServerTest is Script {
             "name=nate&favorite_number=2"
         );
 
-        (bool postFormSuccess, bytes memory postFormResponseBytes) = address(
-            httpServer
-        ).call(postFormRequest);
+        (, bytes memory postFormResponseBytes) = address(httpServer).call(
+            postFormRequest
+        );
         console.log(string(postFormResponseBytes));
     }
 }
