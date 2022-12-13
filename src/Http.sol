@@ -6,6 +6,7 @@ import "./utils/H.sol";
 import "./utils/HttpConstants.sol";
 import "./utils/StringConcat.sol";
 import "./WebApp.sol";
+import "forge-std/console2.sol";
 
 /**
  * Maps HTTP requests to the correct routes in the `WebApp`,
@@ -51,6 +52,8 @@ contract HttpHandler {
         possibleSignatures[1] = "()";
 
         for (uint256 i = 0; i < possibleSignatures.length; i += 1) {
+            console.log(routeHandlerName.concat(possibleSignatures[i]));
+
             HttpMessages.Response memory response = safeCallApp(
                 request,
                 routeHandlerName.concat(possibleSignatures[i])
@@ -86,9 +89,17 @@ contract HttpHandler {
         HttpMessages.Request memory request,
         string memory signature
     ) private returns (HttpMessages.Response memory) {
+        console.log("in safecall");
+        console.log(request.path);
+        console.log(signature);
+
         (bool success, bytes memory data) = address(app).call(
             abi.encodeWithSignature(signature, request)
         );
+
+        console.log(success);
+        console.logBytes(data);
+        console.log("end safecall");
 
         // If unsuccessful call, return 500
         if (!success) {

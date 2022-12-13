@@ -211,7 +211,7 @@ contract ExampleApp is WebApp {
         revert("Reverting from ExampleApp.getError");
     }
 
-    function getPanic() external pure returns (HttpMessages.Response) {
+    function getPanic() external pure returns (HttpMessages.Response memory) {
         string[] memory stringArray = new string[](0);
         stringArray[1] = "This will cause a panic.";
     }
