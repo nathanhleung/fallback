@@ -76,8 +76,6 @@ abstract contract WebApp is Ownable {
         uint16 statusCode,
         string memory errorMessage
     ) internal virtual returns (HttpMessages.Response memory) {
-        console.log("in handle statuscode");
-
         string memory statusCodeString = StringConcat.concat(
             statusCode.toString(),
             " ",
@@ -92,8 +90,6 @@ abstract contract WebApp is Ownable {
         {
             requestHeadersString = StringConcat.join(request.headers, "\r\n");
         }
-
-        console.log("checkpoint");
 
         string memory requestBytesString;
         {
@@ -120,8 +116,6 @@ abstract contract WebApp is Ownable {
             );
         }
 
-        console.log("checkpoint 2");
-
         string memory responseContent = H.html(
             StringConcat.concat(
                 H.head(H.title(statusCodeString)),
@@ -136,8 +130,6 @@ abstract contract WebApp is Ownable {
             )
         );
 
-        console.log("checkpoint 3");
-
         HttpMessages.Response memory response;
         response.statusCode = statusCode;
         response.headers = responseHeaders;
@@ -149,44 +141,19 @@ abstract contract WebApp is Ownable {
     // test this -- need to set a route in the route map
     // but have the actual function be nonexistent
     fallback() external {
-        HttpMessages.Request memory request;
-        // assembly {
-        //     // Slice the sighash
-        //     // https://ethereum.stackexchange.com/questions/83528/how-can-i-get-the-revert-reason-of-a-call-in-solidity-so-that-i-can-use-it-in-th/83577#83577
-        //     request := add(request, 0x04)
-        // }
-
-        // console.log("in fallback");
-        // console.logBytes(msg.data);
-
-        // console.logBytes32(
-        //     keccak256(
-        //         "getError((uint8, string, string[], uint256, bytes, bytes))"
-        //     )
-        // );
-        // console.log(request.path);
-
-        // console.log("success decoding");
-
-        // Message will be set in `handleRoute`.
-        uint256 returnDataSize;
+        // Slice off function selector
+        bytes calldata requestBytes = msg.data[4:];
+        HttpMessages.Request memory request = abi.decode(
+            requestBytes,
+            (HttpMessages.Request)
+        );
         HttpMessages.Response memory response = handleNotFound(request, "");
-        H.html("hello");
-        assembly {
-            returnDataSize := returndatasize()
-        }
-        console.log("return data size");
-        console.log(returnDataSize);
-        handleNotFound(request, "");
-        assembly {
-            // https://ethereum.stackexchange.com/questions/131771/when-writing-assembly-to-which-memory-address-should-i-start-writing
-            let freeMemoryPointer := mload(0x40)
+        bytes memory responseBytes = abi.encode(response);
 
-            // Copy returndata into free memory
-            returndatacopy(freeMemoryPointer, 0, returndatasize())
-
+        uint256 responseBytesLength = responseBytes.length;
+        assembly {
             // Return returndata
-            return(freeMemoryPointer, returndatasize())
+            return(responseBytes, responseBytesLength)
         }
     }
 }

@@ -52,12 +52,19 @@ contract HttpHandler {
         possibleSignatures[1] = "()";
 
         for (uint256 i = 0; i < possibleSignatures.length; i += 1) {
-            console.log(routeHandlerName.concat(possibleSignatures[i]));
-
             HttpMessages.Response memory response = safeCallApp(
                 request,
                 routeHandlerName.concat(possibleSignatures[i])
             );
+
+            console.log("i");
+            console.log(i);
+
+            console.log("statuscode check");
+            console.log(response.statusCode != 404);
+
+            console.log("end check");
+            console.log(i + 1 == possibleSignatures.length);
 
             // If we found a valid route, return the successful
             // response.
@@ -98,7 +105,6 @@ contract HttpHandler {
         );
 
         console.log(success);
-        console.logBytes(data);
         console.log("end safecall");
 
         // If unsuccessful call, return 500
@@ -116,6 +122,18 @@ contract HttpHandler {
                     StringConcat.concat("Error(", revertReason, ")")
                 );
         }
+
+        console.log("response bytes");
+        console.logBytes(data);
+        // bytes memory dataStruct = data[64:];
+        // console.log(dataStruct);
+
+        HttpMessages.Response memory response = abi.decode(
+            data,
+            (HttpMessages.Response)
+        );
+
+        console.log(response.statusCode);
 
         return abi.decode(data, (HttpMessages.Response));
     }

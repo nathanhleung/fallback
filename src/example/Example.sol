@@ -7,7 +7,7 @@ import "../WebApp.sol";
 import "../utils/HttpMessages.sol";
 
 library ExampleComponents {
-    function navbar() internal returns (string memory) {
+    function navbar() internal pure returns (string memory) {
         HComponents.NavbarLink[] memory links = new HComponents.NavbarLink[](6);
         // Stack too deep
         {

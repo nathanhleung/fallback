@@ -25,16 +25,16 @@ contract HttpServerTest is Script {
         // );
         // console.log(string(getIndexResponseBytes));
 
-        // bytes memory getGithubRequest = bytes(
-        //     "GET /github HTTP/1.1\r\n"
-        //     "Host: 127.0.0.1\r\n"
-        //     "Accept-Language: en-US,en\r\n"
-        // );
+        bytes memory getGithubRequest = bytes(
+            "GET /github HTTP/1.1\r\n"
+            "Host: 127.0.0.1\r\n"
+            "Accept-Language: en-US,en\r\n"
+        );
 
-        // (, bytes memory getGithubResponseBytes) = address(httpServer).call(
-        //     getGithubRequest
-        // );
-        // console.log(string(getGithubResponseBytes));
+        (, bytes memory getGithubResponseBytes) = address(httpServer).call(
+            getGithubRequest
+        );
+        console.log(string(getGithubResponseBytes));
 
         // bytes memory getNotFoundRequest = bytes(
         //     "GET /nonexistent HTTP/1.1\r\n"
@@ -61,15 +61,15 @@ contract HttpServerTest is Script {
         // );
         // console.log(string(postFormResponseBytes));
 
-        bytes memory getErrorRequest = bytes(
-            "GET /error HTTP/1.1\r\n"
-            "Host: 127.0.0.1\r\n"
-            "Accept-Language: en-US,en\r\n"
-        );
+        // bytes memory getErrorRequest = bytes(
+        //     "GET /error HTTP/1.1\r\n"
+        //     "Host: 127.0.0.1\r\n"
+        //     "Accept-Language: en-US,en\r\n"
+        // );
 
-        (, bytes memory getErrorResponseBytes) = address(httpServer).call(
-            getErrorRequest
-        );
-        console.log(string(getErrorResponseBytes));
+        // (, bytes memory getErrorResponseBytes) = address(httpServer).call(
+        //     getErrorRequest
+        // );
+        // console.log(string(getErrorResponseBytes));
     }
 }
