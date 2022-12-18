@@ -84,13 +84,7 @@ contract ExampleApp is WebApp {
     }
 
     function getIndex() external returns (HttpMessages.Response memory) {
-        string[] memory responseHeaders = new string[](1);
-        responseHeaders[0] = "Content-Type: text/html";
-
         HttpMessages.Response memory response;
-        response.statusCode = 200;
-        response.headers = responseHeaders;
-
         response.content = ExampleComponents.layout(
             "",
             StringConcat.concat(
@@ -135,12 +129,7 @@ contract ExampleApp is WebApp {
         external
         returns (HttpMessages.Response memory)
     {
-        string[] memory responseHeaders = new string[](1);
-        responseHeaders[0] = "Content-Type: text/html";
-
         HttpMessages.Response memory response;
-        response.statusCode = 200;
-        response.headers = responseHeaders;
         response.content = ExampleComponents.layout(
             "",
             StringConcat.concat(

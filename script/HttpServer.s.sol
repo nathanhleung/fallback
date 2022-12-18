@@ -14,27 +14,27 @@ contract HttpServerTest is Script {
     }
 
     function run() public {
-        // bytes memory getIndexRequest = bytes(
-        //     "GET / HTTP/1.1\r\n"
-        //     "Host: 127.0.0.1\r\n"
-        //     "Accept-Language: en-US,en\r\n"
-        // );
-
-        // (, bytes memory getIndexResponseBytes) = address(httpServer).call(
-        //     getIndexRequest
-        // );
-        // console.log(string(getIndexResponseBytes));
-
-        bytes memory getGithubRequest = bytes(
-            "GET /github HTTP/1.1\r\n"
+        bytes memory getIndexRequest = bytes(
+            "GET / HTTP/1.1\r\n"
             "Host: 127.0.0.1\r\n"
             "Accept-Language: en-US,en\r\n"
         );
 
-        (, bytes memory getGithubResponseBytes) = address(httpServer).call(
-            getGithubRequest
+        (, bytes memory getIndexResponseBytes) = address(httpServer).call(
+            getIndexRequest
         );
-        console.log(string(getGithubResponseBytes));
+        console.log(string(getIndexResponseBytes));
+
+        // bytes memory getGithubRequest = bytes(
+        //     "GET /github HTTP/1.1\r\n"
+        //     "Host: 127.0.0.1\r\n"
+        //     "Accept-Language: en-US,en\r\n"
+        // );
+
+        // (, bytes memory getGithubResponseBytes) = address(httpServer).call(
+        //     getGithubRequest
+        // );
+        // console.log(string(getGithubResponseBytes));
 
         // bytes memory getNotFoundRequest = bytes(
         //     "GET /nonexistent HTTP/1.1\r\n"
