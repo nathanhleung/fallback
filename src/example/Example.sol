@@ -223,6 +223,7 @@ contract ExampleApp is WebApp {
         ] = "Location: https://github.com/nathanhleung/fallback";
 
         HttpMessages.Response memory response;
+        // response.statusCode = 302;
         response.headers = responseHeaders;
 
         return response;

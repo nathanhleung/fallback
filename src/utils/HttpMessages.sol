@@ -362,6 +362,11 @@ contract HttpMessages {
         view
         returns (bytes memory responseBytes)
     {
+        // Default to 200 if status code is unset
+        if (response.statusCode == 0) {
+            response.statusCode = 200;
+        }
+
         string memory responseHeadersString = StringConcat
             .concat(
                 "HTTP/1.1 ",
@@ -373,6 +378,14 @@ contract HttpMessages {
             )
             .concat(response.headers.join("\r\n"));
 
+        // Default to text/html if no headers but has content
+        uint256 contentLength = bytes(response.content).length;
+        if (response.headers.length == 0 && contentLength != 0) {
+            responseHeadersString = responseHeadersString.concat(
+                "Content-Type: text/html"
+            );
+        }
+
         responseBytes = bytes(
             responseHeadersString.concat(
                 "\r\n",
@@ -380,7 +393,7 @@ contract HttpMessages {
                 block.timestamp.toString(),
                 "\r\n"
                 "Content-Length: ",
-                bytes(response.content).length.toString(),
+                contentLength.toString(),
                 "\r\n\r\n",
                 response.content
             )

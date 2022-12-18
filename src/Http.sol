@@ -57,15 +57,6 @@ contract HttpHandler {
                 routeHandlerName.concat(possibleSignatures[i])
             );
 
-            console.log("i");
-            console.log(i);
-
-            console.log("statuscode check");
-            console.log(response.statusCode != 404);
-
-            console.log("end check");
-            console.log(i + 1 == possibleSignatures.length);
-
             // If we found a valid route, return the successful
             // response.
             if (response.statusCode != 404) {
@@ -96,16 +87,9 @@ contract HttpHandler {
         HttpMessages.Request memory request,
         string memory signature
     ) private returns (HttpMessages.Response memory) {
-        console.log("in safecall");
-        console.log(request.path);
-        console.log(signature);
-
         (bool success, bytes memory data) = address(app).call(
             abi.encodeWithSignature(signature, request)
         );
-
-        console.log(success);
-        console.log("end safecall");
 
         // If unsuccessful call, return 500
         if (!success) {
@@ -123,19 +107,12 @@ contract HttpHandler {
                 );
         }
 
-        console.log("response bytes");
-        console.logBytes(data);
-        // bytes memory dataStruct = data[64:];
-        // console.log(dataStruct);
-
         HttpMessages.Response memory response = abi.decode(
             data,
             (HttpMessages.Response)
         );
 
-        console.log(response.statusCode);
-
-        return abi.decode(data, (HttpMessages.Response));
+        return response;
     }
 }
 
@@ -186,7 +163,7 @@ contract HttpProxy {
             } catch Panic(uint256 reason) {
                 HttpMessages.Response memory response = app.handleError(
                     request,
-                    StringConcat.concat("Panic(", reason.toString(), ")")
+                    StringConcat.concat("Panic(", reason.toHexString(), ")")
                 );
 
                 messages.buildResponse(response);
@@ -206,7 +183,7 @@ contract HttpProxy {
             request.raw = requestBytes;
             HttpMessages.Response memory response = app.handleBadRequest(
                 request,
-                StringConcat.concat("Panic(", reason.toString(), ")")
+                StringConcat.concat("Panic(", reason.toHexString(), ")")
             );
 
             messages.buildResponse(response);

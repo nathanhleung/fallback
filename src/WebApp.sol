@@ -86,10 +86,10 @@ abstract contract WebApp is Ownable {
         responseHeaders[0] = "Content-Type: text/html";
 
         // Stack too deep
-        string memory requestHeadersString;
-        {
-            requestHeadersString = StringConcat.join(request.headers, "\r\n");
-        }
+        string memory requestHeadersString = StringConcat.join(
+            request.headers,
+            "\r\n"
+        );
 
         string memory requestBytesString;
         {
@@ -149,11 +149,12 @@ abstract contract WebApp is Ownable {
         );
         HttpMessages.Response memory response = handleNotFound(request, "");
         bytes memory responseBytes = abi.encode(response);
-
         uint256 responseBytesLength = responseBytes.length;
         assembly {
-            // Return returndata
-            return(responseBytes, responseBytesLength)
+            // Return returndata, skipping the first 32 bytes
+            // (bytes memory setup)
+            // TODO(nathanhleung) actually figure out why this works
+            return(add(responseBytes, 32), add(responseBytesLength, 32))
         }
     }
 }
