@@ -2,11 +2,14 @@
 pragma solidity ^0.8.13;
 
 /**
- * String casing utilities.
- *
- * Based on https://gist.github.com/ottodevs/c43d0a8b4b891ac2da675f825b1d1dbf
+ * @title StringCase, a library of string casing utilities.
  */
 library StringCase {
+    /**
+     * @notice Based on https://gist.github.com/ottodevs/c43d0a8b4b891ac2da675f825b1d1dbf
+     * @dev Lowercases all letters in a string
+     * @param str The string to lowercase
+     */
     function toLowerCase(string memory str)
         internal
         pure

@@ -2,9 +2,16 @@
 pragma solidity ^0.8.13;
 
 /**
- * String comparison utilities.
+ * @title StringCompare, a library of string comparison utilities.
  */
 library StringCompare {
+    /**
+     * @dev Determines whether two strings are equal by comparing
+     *     the strings byte-by-byte.
+     * @param str The first string to compare
+     * @param otherStr The second string to compare
+     * @return Whether the two strings are equal
+     */
     function equals(string memory str, string memory otherStr)
         internal
         pure
@@ -26,6 +33,13 @@ library StringCompare {
         return true;
     }
 
+    /**
+     * @dev Determines whether one string starts with another
+     *     by checking the string against the prefix byte-by-byte.
+     * @param str The string to check the prefix against
+     * @param prefix The prefix
+     * @return whether the string starts with the prefix
+     */
     function startsWith(string memory str, string memory prefix)
         internal
         pure

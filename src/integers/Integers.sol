@@ -1,7 +1,5 @@
 pragma solidity ^0.8.13;
 
-import "forge-std/console.sol";
-
 /**
  * Library for working with integers.
  */

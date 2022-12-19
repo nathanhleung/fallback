@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
-import "./Http.sol";
-import "./WebApp.sol";
+import {HttpHandler} from "./http/HttpHandler.sol";
+import {HttpMessages} from "./http/HttpMessages.sol";
+import {HttpProxy} from "./http/HttpProxy.sol";
+import {WebApp} from "./WebApp.sol";
 
 /**
  * Takes in a `WebApp` and server options constructs a functional
  * Solidity HTTP server.
  */
-contract HttpServer is HttpProxy, Ownable {
+contract HttpServer is HttpProxy {
     constructor(WebApp _app, HttpMessages.Options memory messagesOptions) {
         app = _app;
         handler = new HttpHandler(_app);

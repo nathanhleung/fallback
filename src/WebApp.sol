@@ -1,23 +1,27 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
-import "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
-import "./utils/H.sol";
-import "./utils/HttpConstants.sol";
-import "./utils/HttpMessages.sol";
-import "forge-std/console2.sol";
+import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
+import {H} from "./html-dsl/H.sol";
+import {HttpConstants} from "./http/HttpConstants.sol";
+import {HttpMessages} from "./http/HttpMessages.sol";
+import {StringConcat} from "./strings/StringConcat.sol";
 
 /**
- * Web app developers need to implement this contract, then pass it to
- * `HttpServer`'s constructor.
+ * @title Web App, a base contract to create Solidity apps with
+ * @author nathanhleung
+ * @notice An abstract contract that can be extended to create
+ *     arbitrary web apps.
+ * @dev To create a new fallback() web app, first extend this contract,
+ *     then pass it to `HttpServer`'s constructor.
  *
- * To add more routes, add the path to the `routes` mapping
- * (under the appropriate HTTP method) with the name of the
- * function to run for the route and implement the function
- * Make sure the function has the signature
- * `functionName(string[],bytes)` and it returns
- * `(uint16,string[],string memory)`.
+ *     To add more routes, add the path to the `routes` mapping
+ *     (under the appropriate HTTP method) with the name of the
+ *     function to run for the route and implement the function
+ *     Make sure the function has the signature
+ *     `functionName(HttpMessages.Request)` and it returns
+ *     `(HttpMessages.Response)`.
  */
 abstract contract WebApp is Ownable {
     using Strings for uint16;
@@ -41,15 +45,62 @@ abstract contract WebApp is Ownable {
         }
     }
 
+    /**
+     * @dev Sets whether the web app is operating in `debug` mode or not.
+     *     In `debug` mode, error pages will show more details (e.g.
+     *     the parsed request and response).
+     * @param _debug The new debug mode value.
+     */
     function setDebug(bool _debug) external onlyOwner {
         debug = _debug;
     }
 
+    /**
+     * @dev Creates an HTTP JSON response with the correct
+     *     JSON `Content-Type` header set.
+     */
+    function json(string memory jsonString)
+        internal
+        pure
+        returns (HttpMessages.Response memory response)
+    {
+        string[] memory responseHeaders = new string[](1);
+        responseHeaders[0] = "Content-Type: application/json";
+
+        response.headers = responseHeaders;
+        response.content = jsonString;
+        return response;
+    }
+
+    function redirect(uint16 statusCode, string memory location)
+        internal
+        pure
+        returns (HttpMessages.Response memory response)
+    {
+        require(
+            statusCode == 301 || statusCode == 302,
+            "Redirect status code must be 301 or 302"
+        );
+
+        string[] memory responseHeaders = new string[](1);
+        responseHeaders[0] = StringConcat.concat("Location: ", location);
+
+        response.statusCode = statusCode;
+        response.headers = responseHeaders;
+        return response;
+    }
+
+    /**
+     * @dev Default index route.
+     */
     function getIndex(HttpMessages.Request calldata request)
         external
         virtual
         returns (HttpMessages.Response memory);
 
+    /**
+     * @dev Default 404 Not Found handler
+     */
     function handleNotFound(
         HttpMessages.Request memory request,
         string memory errorMessage
@@ -57,6 +108,9 @@ abstract contract WebApp is Ownable {
         return handleStatusCode(request, 404, errorMessage);
     }
 
+    /**
+     * @dev Default 400 Bad Request handler
+     */
     function handleBadRequest(
         HttpMessages.Request calldata request,
         string memory errorMessage
@@ -64,6 +118,9 @@ abstract contract WebApp is Ownable {
         return handleStatusCode(request, 400, errorMessage);
     }
 
+    /**
+     * @dev Default 500 Internal Server Error handler
+     */
     function handleError(
         HttpMessages.Request calldata request,
         string memory errorMessage
@@ -71,11 +128,16 @@ abstract contract WebApp is Ownable {
         return handleStatusCode(request, 500, errorMessage);
     }
 
+    /**
+     * @dev Default handler for arbitrary status codes, used by
+     * default `handleNotFound`, `handleBadRequest`, and
+     * `handleError`.
+     */
     function handleStatusCode(
         HttpMessages.Request memory request,
         uint16 statusCode,
         string memory errorMessage
-    ) internal virtual returns (HttpMessages.Response memory) {
+    ) private view returns (HttpMessages.Response memory) {
         string memory statusCodeString = StringConcat.concat(
             statusCode.toString(),
             " ",
@@ -85,36 +147,27 @@ abstract contract WebApp is Ownable {
         string[] memory responseHeaders = new string[](1);
         responseHeaders[0] = "Content-Type: text/html";
 
-        // Stack too deep
         string memory requestHeadersString = StringConcat.join(
             request.headers,
             "\r\n"
         );
 
-        string memory requestBytesString;
-        {
-            requestBytesString = string(request.raw);
-        }
-        string memory requestContentString;
-        {
-            requestContentString = request.contentLength > 0
-                ? H.pre(string(request.content))
-                : "(empty)";
-        }
-        string memory debugString;
-        {
-            debugString = H.div(
-                StringConcat.concat(
-                    H.p(errorMessage),
-                    H.h2("Raw Request"),
-                    H.pre(requestBytesString),
-                    H.h2("Parsed Request Headers"),
-                    H.pre(requestHeadersString),
-                    H.h2("Parsed Request Content"),
-                    H.p(requestContentString)
-                )
-            );
-        }
+        string memory requestBytesString = string(request.raw);
+        string memory requestContentString = request.contentLength > 0
+            ? H.pre(string(request.content))
+            : "(empty)";
+
+        string memory debugString = H.div(
+            StringConcat.concat(
+                H.p(errorMessage),
+                H.h2("Raw Request"),
+                H.pre(requestBytesString),
+                H.h2("Parsed Request Headers"),
+                H.pre(requestHeadersString),
+                H.h2("Parsed Request Content"),
+                H.p(requestContentString)
+            )
+        );
 
         string memory responseContent = H.html(
             StringConcat.concat(

@@ -71,5 +71,16 @@ contract HttpServerTest is Script {
         //     getErrorRequest
         // );
         // console.log(string(getErrorResponseBytes));
+
+        bytes memory getJsonRequest = bytes(
+            "GET /json HTTP/1.1\r\n"
+            "Host: 127.0.0.1\r\n"
+            "Accept-Language: en-US,en\r\n"
+        );
+
+        (, bytes memory getJsonResponseBytes) = address(httpServer).call(
+            getJsonRequest
+        );
+        console.log(string(getJsonResponseBytes));
     }
 }

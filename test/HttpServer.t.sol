@@ -13,6 +13,7 @@ contract HttpServerTest is Test {
         httpServer = new ExampleServer();
     }
 
+    // TODO(nathanhleung) write tests
     function testRequest() public {
         bytes memory request = bytes(
             "GET / HTTP/1.1\r\n"

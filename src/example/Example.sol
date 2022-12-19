@@ -1,46 +1,53 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
-import "../HttpServer.sol";
-import "../WebApp.sol";
-import "../utils/HttpMessages.sol";
+import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
+import {H} from "../html-dsl/H.sol";
+import {HComponents} from "../html-dsl/HComponents.sol";
+import {HttpConstants} from "../http/HttpConstants.sol";
+import {HttpMessages} from "../http/HttpMessages.sol";
+import {DefaultServer} from "../HttpServer.sol";
+import {StringConcat} from "../strings/StringConcat.sol";
+import {WebApp} from "../WebApp.sol";
 
 library ExampleComponents {
     function navbar() internal pure returns (string memory) {
-        HComponents.NavbarLink[] memory links = new HComponents.NavbarLink[](6);
-        // Stack too deep
-        {
-            HComponents.NavbarLink memory homeLink;
-            homeLink.href = "/";
-            homeLink.children = "Home";
-            links[0] = homeLink;
+        HComponents.NavbarLink[] memory links = new HComponents.NavbarLink[](7);
 
-            HComponents.NavbarLink memory debugLink;
-            debugLink.href = "/debug";
-            debugLink.children = "Debug";
-            links[1] = debugLink;
+        HComponents.NavbarLink memory homeLink;
+        homeLink.href = "/";
+        homeLink.children = "Home";
+        links[0] = homeLink;
 
-            HComponents.NavbarLink memory notFoundLink;
-            notFoundLink.href = "/nonexistent";
-            notFoundLink.children = "Nonexistent";
-            links[2] = notFoundLink;
+        HComponents.NavbarLink memory debugLink;
+        debugLink.href = "/debug";
+        debugLink.children = "Debug";
+        links[1] = debugLink;
 
-            HComponents.NavbarLink memory errorLink;
-            errorLink.href = "/error";
-            errorLink.children = "Error";
-            links[3] = errorLink;
+        HComponents.NavbarLink memory notFoundLink;
+        notFoundLink.href = "/nonexistent";
+        notFoundLink.children = "Nonexistent";
+        links[2] = notFoundLink;
 
-            HComponents.NavbarLink memory panicLink;
-            panicLink.href = "/panic";
-            panicLink.children = "Panic";
-            links[4] = panicLink;
+        HComponents.NavbarLink memory errorLink;
+        errorLink.href = "/error";
+        errorLink.children = "Error";
+        links[3] = errorLink;
 
-            HComponents.NavbarLink memory githubLink;
-            githubLink.href = "/github";
-            githubLink.children = "GitHub";
-            links[5] = githubLink;
-        }
+        HComponents.NavbarLink memory panicLink;
+        panicLink.href = "/panic";
+        panicLink.children = "Panic";
+        links[4] = panicLink;
+
+        HComponents.NavbarLink memory githubLink;
+        githubLink.href = "/github";
+        githubLink.children = "GitHub";
+        links[5] = githubLink;
+
+        HComponents.NavbarLink memory jsonLink;
+        jsonLink.href = "/json";
+        jsonLink.children = "JSON";
+        links[6] = jsonLink;
 
         return HComponents.navbar(links);
     }
@@ -48,6 +55,7 @@ library ExampleComponents {
     /** Base layout to be used by other pages */
     function layout(string memory head, string memory body)
         internal
+        pure
         returns (string memory)
     {
         return
@@ -81,9 +89,10 @@ contract ExampleApp is WebApp {
         routes[HttpConstants.Method.GET]["/error"] = "getError";
         routes[HttpConstants.Method.GET]["/panic"] = "getPanic";
         routes[HttpConstants.Method.GET]["/github"] = "getGithub";
+        routes[HttpConstants.Method.GET]["/json"] = "getJson";
     }
 
-    function getIndex() external returns (HttpMessages.Response memory) {
+    function getIndex() external pure returns (HttpMessages.Response memory) {
         HttpMessages.Response memory response;
         response.content = ExampleComponents.layout(
             "",
@@ -119,14 +128,17 @@ contract ExampleApp is WebApp {
 
     function getIndex(HttpMessages.Request calldata request)
         external
+        view
         override
         returns (HttpMessages.Response memory)
     {
+        request;
         return this.getIndex();
     }
 
     function postForm(HttpMessages.Request calldata request)
         external
+        pure
         returns (HttpMessages.Response memory)
     {
         HttpMessages.Response memory response;
@@ -150,6 +162,7 @@ contract ExampleApp is WebApp {
 
     function getDebug(HttpMessages.Request calldata request)
         external
+        view
         returns (HttpMessages.Response memory)
     {
         string[] memory responseHeaders = new string[](1);
@@ -200,22 +213,22 @@ contract ExampleApp is WebApp {
         revert("Reverting from ExampleApp.getError");
     }
 
-    function getPanic() external pure returns (HttpMessages.Response memory) {
+    function getPanic()
+        external
+        pure
+        returns (HttpMessages.Response memory response)
+    {
         string[] memory stringArray = new string[](0);
         stringArray[1] = "This will cause a panic.";
+        return response;
     }
 
     function getGithub() external pure returns (HttpMessages.Response memory) {
-        string[] memory responseHeaders = new string[](1);
-        responseHeaders[
-            0
-        ] = "Location: https://github.com/nathanhleung/fallback";
+        return redirect(302, "https://github.com/nathanhleung/fallback");
+    }
 
-        HttpMessages.Response memory response;
-        // response.statusCode = 302;
-        response.headers = responseHeaders;
-
-        return response;
+    function getJson() external pure returns (HttpMessages.Response memory) {
+        return json('{"key": "value"}');
     }
 }
 

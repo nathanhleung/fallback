@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
-import "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
-import "./HttpConstants.sol";
-import "./Integers.sol";
-import "./StringConcat.sol";
-import "./StringCase.sol";
-import "./StringCompare.sol";
-import "forge-std/console.sol";
+import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
+import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
+import {Integers} from "../integers/Integers.sol";
+import {StringConcat} from "../strings/StringConcat.sol";
+import {StringCase} from "../strings/StringCase.sol";
+import {StringCompare} from "../strings/StringCompare.sol";
+import {HttpConstants} from "./HttpConstants.sol";
 
 /**
  * Utility contract to for working with HTTP messages (i.e. requests and
@@ -251,7 +250,6 @@ contract HttpMessages {
             requestHeadersCount += 1;
 
             if (headerString.toLowerCase().startsWith("content-length: ")) {
-                uint256 headerLength = headerBytes.length;
                 // "content-length: " is 16 characters
                 bytes memory contentLengthBytes = new bytes(headerLength - 16);
                 for (uint256 j = 16; j < headerLength; j += 1) {
