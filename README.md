@@ -106,6 +106,8 @@ const jsonRpcData = JSON.stringify({
 
 Forge unit tests are located in the `test` directory.
 
+Run `forge test --match-path "test/**/*.sol"`, or `forge test` to run with the fuzzer.
+
 ### Integration
 
 To test that all the Solidity contracts work together, run `forge script script/HttpServer.s.sol`.
