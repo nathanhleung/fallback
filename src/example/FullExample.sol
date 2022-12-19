@@ -9,7 +9,7 @@ import {DefaultServer} from "../HttpServer.sol";
 import {StringConcat} from "../strings/StringConcat.sol";
 import {WebApp} from "../WebApp.sol";
 
-library ExampleComponents {
+library FullExampleComponents {
     struct NavbarLink {
         string href;
         string children;
@@ -135,7 +135,7 @@ library ExampleComponents {
 /**
  * Example web app. Add routes here.
  */
-contract ExampleApp is WebApp {
+contract FullExampleApp is WebApp {
     constructor() {
         routes[HttpConstants.Method.GET]["/"] = "getIndex";
         routes[HttpConstants.Method.POST]["/form"] = "postForm";
@@ -147,8 +147,7 @@ contract ExampleApp is WebApp {
     }
 
     function getIndex() external pure returns (HttpMessages.Response memory) {
-        HttpMessages.Response memory response;
-        response.content = ExampleComponents.layout(
+        string memory htmlString = FullExampleComponents.layout(
             "",
             StringConcat.concat(
                 H.h1("fallback() Web Framework"),
@@ -175,7 +174,7 @@ contract ExampleApp is WebApp {
             )
         );
 
-        return response;
+        return html(htmlString);
     }
 
     function getIndex(HttpMessages.Request calldata request)
@@ -193,8 +192,7 @@ contract ExampleApp is WebApp {
         pure
         returns (HttpMessages.Response memory)
     {
-        HttpMessages.Response memory response;
-        response.content = ExampleComponents.layout(
+        string memory htmlString = FullExampleComponents.layout(
             "",
             StringConcat.concat(
                 H.h1("fallback() Web Framework"),
@@ -207,7 +205,7 @@ contract ExampleApp is WebApp {
             )
         );
 
-        return response;
+        return html(htmlString);
     }
 
     function getDebug(HttpMessages.Request calldata request)
@@ -215,15 +213,12 @@ contract ExampleApp is WebApp {
         view
         returns (HttpMessages.Response memory)
     {
-        string[] memory responseHeaders = new string[](1);
-        responseHeaders[0] = "Content-Type: text/html";
-
         string memory requestHeadersString = StringConcat.join(
             request.headers,
             "\r\n"
         );
 
-        string memory responseContent = ExampleComponents.layout(
+        string memory htmlString = FullExampleComponents.layout(
             "",
             StringConcat.concat(
                 H.h1("fallback() Web Framework"),
@@ -250,11 +245,7 @@ contract ExampleApp is WebApp {
             )
         );
 
-        HttpMessages.Response memory response;
-        response.statusCode = 200;
-        response.headers = responseHeaders;
-        response.content = responseContent;
-        return response;
+        return html(htmlString);
     }
 
     function getError() external pure returns (HttpMessages.Response memory) {
@@ -284,8 +275,8 @@ contract ExampleApp is WebApp {
  * Example HTTP server. Wraps the web app contract in HTTP request
  * parsing code, sends proper HTTP responses.
  */
-contract ExampleServer is DefaultServer {
-    constructor() DefaultServer(new ExampleApp()) {
+contract FullExampleServer is DefaultServer {
+    constructor() DefaultServer(new FullExampleApp()) {
         app.setDebug(true);
     }
 }

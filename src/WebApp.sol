@@ -72,6 +72,23 @@ abstract contract WebApp is Ownable {
         return response;
     }
 
+    /**
+     * @dev Creates an HTTP HTML response with the correct
+     *     HTML `Content-Type` header set.
+     */
+    function html(string memory htmlString)
+        internal
+        pure
+        returns (HttpMessages.Response memory response)
+    {
+        string[] memory responseHeaders = new string[](1);
+        responseHeaders[0] = "Content-Type: text/html";
+
+        response.headers = responseHeaders;
+        response.content = htmlString;
+        return response;
+    }
+
     function redirect(uint16 statusCode, string memory location)
         internal
         pure
@@ -144,9 +161,6 @@ abstract contract WebApp is Ownable {
             c.STATUS_CODE_STRINGS(statusCode)
         );
 
-        string[] memory responseHeaders = new string[](1);
-        responseHeaders[0] = "Content-Type: text/html";
-
         string memory requestHeadersString = StringConcat.join(
             request.headers,
             "\r\n"
@@ -183,10 +197,8 @@ abstract contract WebApp is Ownable {
             )
         );
 
-        HttpMessages.Response memory response;
+        HttpMessages.Response memory response = html(responseContent);
         response.statusCode = statusCode;
-        response.headers = responseHeaders;
-        response.content = responseContent;
         return response;
     }
 

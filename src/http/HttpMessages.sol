@@ -376,11 +376,11 @@ contract HttpMessages {
             )
             .concat(response.headers.join("\r\n"));
 
-        // Default to text/html if no headers but has content
+        // Default to text/plain if no headers but has content
         uint256 contentLength = bytes(response.content).length;
         if (response.headers.length == 0 && contentLength != 0) {
             responseHeadersString = responseHeadersString.concat(
-                "Content-Type: text/html"
+                "Content-Type: text/plain"
             );
         }
 
