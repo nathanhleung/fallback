@@ -177,7 +177,7 @@ abstract contract WebApp is Ownable {
                         H.h1(statusCodeString),
                         debug ? debugString : "",
                         H.hr(),
-                        H.p(H.i("fallback() web server"))
+                        H.p(H.i("fallback() web framework"))
                     )
                 )
             )

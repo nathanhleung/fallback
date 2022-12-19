@@ -3,7 +3,6 @@ pragma solidity ^0.8.13;
 
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {H} from "../html-dsl/H.sol";
-import {HComponents} from "../html-dsl/HComponents.sol";
 import {HttpConstants} from "../http/HttpConstants.sol";
 import {HttpMessages} from "../http/HttpMessages.sol";
 import {DefaultServer} from "../HttpServer.sol";
@@ -11,45 +10,88 @@ import {StringConcat} from "../strings/StringConcat.sol";
 import {WebApp} from "../WebApp.sol";
 
 library ExampleComponents {
-    function navbar() internal pure returns (string memory) {
-        HComponents.NavbarLink[] memory links = new HComponents.NavbarLink[](7);
+    struct NavbarLink {
+        string href;
+        string children;
+    }
 
-        HComponents.NavbarLink memory homeLink;
+    /**
+     * @dev Native system font stack. Copied from
+     *     https://css-tricks.com/snippets/css/system-font-stack/
+     */
+    string constant SYSTEM_FONTS =
+        '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"';
+
+    function styles() internal pure returns (string memory) {
+        return
+            H.style(
+                StringConcat.concat(
+                    "body {"
+                    "font-family: ",
+                    SYSTEM_FONTS,
+                    ";",
+                    "padding: 50px;"
+                    "}"
+                    ".navbar > ul { list-style-type: none; padding: 0; }"
+                    ".navbar > ul > li { display: inline-block; margin-right: 40px; }"
+                )
+            );
+    }
+
+    function navbar() internal pure returns (string memory) {
+        NavbarLink[] memory links = new NavbarLink[](7);
+
+        NavbarLink memory homeLink;
         homeLink.href = "/";
         homeLink.children = "Home";
         links[0] = homeLink;
 
-        HComponents.NavbarLink memory debugLink;
+        NavbarLink memory debugLink;
         debugLink.href = "/debug";
         debugLink.children = "Debug";
         links[1] = debugLink;
 
-        HComponents.NavbarLink memory notFoundLink;
+        NavbarLink memory notFoundLink;
         notFoundLink.href = "/nonexistent";
         notFoundLink.children = "Nonexistent";
         links[2] = notFoundLink;
 
-        HComponents.NavbarLink memory errorLink;
+        NavbarLink memory errorLink;
         errorLink.href = "/error";
         errorLink.children = "Error";
         links[3] = errorLink;
 
-        HComponents.NavbarLink memory panicLink;
+        NavbarLink memory panicLink;
         panicLink.href = "/panic";
         panicLink.children = "Panic";
         links[4] = panicLink;
 
-        HComponents.NavbarLink memory githubLink;
+        NavbarLink memory githubLink;
         githubLink.href = "/github";
         githubLink.children = "GitHub";
         links[5] = githubLink;
 
-        HComponents.NavbarLink memory jsonLink;
+        NavbarLink memory jsonLink;
         jsonLink.href = "/json";
         jsonLink.children = "JSON";
         links[6] = jsonLink;
 
-        return HComponents.navbar(links);
+        string memory lis = "";
+        for (uint256 i = 0; i < links.length; i += 1) {
+            lis = StringConcat.concat(
+                lis,
+                (
+                    H.li(
+                        H.a(
+                            StringConcat.concat('href="', links[i].href, '"'),
+                            links[i].children
+                        )
+                    )
+                )
+            );
+        }
+
+        return H.div("class='navbar'", H.ul(lis));
     }
 
     /** Base layout to be used by other pages */
@@ -63,16 +105,28 @@ library ExampleComponents {
                 StringConcat.concat(
                     H.head(
                         StringConcat.concat(
-                            H.title("fallback() Web Server"),
+                            H.title("fallback() Web Framework"),
                             H.meta('charset="utf-8"'),
                             H.meta(
                                 'name="viewport" content="width=device-width, initial-scale=1"'
                             ),
-                            HComponents.styles(),
+                            styles(),
                             head
                         )
                     ),
-                    H.body(StringConcat.concat(navbar(), body))
+                    H.body(
+                        StringConcat.concat(navbar(), H.main(body), footer())
+                    )
+                )
+            );
+    }
+
+    function footer() internal pure returns (string memory) {
+        return
+            H.footer(
+                StringConcat.concat(
+                    H.hr(),
+                    H.p(H.i("fallback() web framework"))
                 )
             );
     }
@@ -117,9 +171,7 @@ contract ExampleApp is WebApp {
                         H.br(),
                         H.button('"type="submit"', "Submit")
                     )
-                ),
-                H.hr(),
-                H.p(H.i("fallback() web server"))
+                )
             )
         );
 
@@ -145,15 +197,13 @@ contract ExampleApp is WebApp {
         response.content = ExampleComponents.layout(
             "",
             StringConcat.concat(
-                H.h1("fallback() Web Server"),
+                H.h1("fallback() Web Framework"),
                 H.p(
                     StringConcat.concat(
                         "Received posted data: ",
                         string(request.content)
                     )
-                ),
-                H.hr(),
-                H.p(H.i("fallback() web server"))
+                )
             )
         );
 
@@ -176,7 +226,7 @@ contract ExampleApp is WebApp {
         string memory responseContent = ExampleComponents.layout(
             "",
             StringConcat.concat(
-                H.h1("fallback() Web Server"),
+                H.h1("fallback() Web Framework"),
                 H.p(
                     StringConcat.concat(
                         "Debug mode: ",
@@ -196,9 +246,7 @@ contract ExampleApp is WebApp {
                     )
                 ),
                 H.p("Request headers:"),
-                H.pre(requestHeadersString),
-                H.hr(),
-                H.p(H.i("fallback() web server"))
+                H.pre(requestHeadersString)
             )
         );
 
@@ -233,7 +281,7 @@ contract ExampleApp is WebApp {
 }
 
 /**
- * Example web server. Wraps the web app contract in HTTP request
+ * Example HTTP server. Wraps the web app contract in HTTP request
  * parsing code, sends proper HTTP responses.
  */
 contract ExampleServer is DefaultServer {
