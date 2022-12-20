@@ -1,8 +1,6 @@
 # fallback()
 
-Write web apps in Solidity.
-
-**fallback()** is a Solidity web framework / a proof-of-concept implementation of HTTP over Ethereum.
+Write web apps in Solidity with **fallback()**: a Solidity web framework / a proof-of-concept implementation of HTTP over Ethereum.
 
 ## Getting Started
 
