@@ -10,11 +10,11 @@ To create a new Solidity web app, extend the [`WebApp`](./src/WebApp.sol) contra
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {H} from "https://github.com/nathanhleung/fallback/src/html-dsl/H.sol";
-import {HttpMessages} from "https://github.com/nathanhleung/fallback/src/http/HttpMessages.sol";
-import {StringConcat} from "https://github.com/nathanhleung/fallback/src/strings/StringConcat.sol";
-import {WebApp} from "https://github.com/nathanhleung/fallback/src/WebApp.sol";
-import {DefaultServer} from "https://github.com/nathanhleung/fallback/src/HttpServer.sol";
+import {H} from "https://github.com/nathanhleung/fallback/blob/main/src/html-dsl/H.sol";
+import {HttpMessages} from "https://github.com/nathanhleung/fallback/blob/main/src/http/HttpMessages.sol";
+import {StringConcat} from "https://github.com/nathanhleung/fallback/blob/main/src/strings/StringConcat.sol";
+import {WebApp} from "https://github.com/nathanhleung/fallback/blob/main/src/WebApp.sol";
+import {DefaultServer} from "https://github.com/nathanhleung/fallback/blob/main/src/HttpServer.sol";
 
 contract MyApp is WebApp {
     constructor() {
