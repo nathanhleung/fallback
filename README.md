@@ -6,7 +6,7 @@ Write web apps in Solidity.
 
 ## Getting Started
 
-To create a new Solidity web app, extend the `WebApp` contract.
+To create a new Solidity web app, extend the [`WebApp`](./src/WebApp.sol) contract.
 
 ```solidity
 contract MyApp is WebApp {
@@ -30,7 +30,7 @@ contract MyApp is WebApp {
 }
 ```
 
-Then, extend the `DefaultServer` contract and pass it the web app.
+Then, extend the [`DefaultServer`](./src/HttpServer.sol) contract and pass it the web app.
 
 ```solidity
 contract MyServer is DefaultServer {
@@ -42,11 +42,7 @@ contract MyServer is DefaultServer {
 
 Deploy `MyServer`, then send it HTTP request bytes in the `data` field of a transaction. The return value will be the bytes of a HTTP response.
 
-## How It Works
-
-When you send a transaction to the deployed `HttpServer` contract with a UTF-8 hex-encoded HTTP request as data, the contract will return a hex-encoded HTTP response.
-
-### Example
+### Example Transaction
 
 ```js
 const jsonRpcData = JSON.stringify({
@@ -93,6 +89,22 @@ Content-Length: 1232
 <html><head><title>fallback() Web Framework</title><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
 // ... more html ...
 ```
+
+## How It Works
+
+[`HttpServer`](./src/HttpServer.sol) extends [`HttpProxy`](./src/http/HttpProxy.sol), which is a contract whose only `external` or `public` function is a [`fallback`](https://docs.soliditylang.org/en/v0.8.17/contracts.html#fallback-function) function.
+
+When you send a transaction to the [`HttpServer`](./src/HttpServer.sol) with `data`, since there are no functions on the contract, the `fallback` function will be called.
+
+In the `fallback` function, [`HttpServer`](./src/HttpServer.sol) parses the calldata as if it were an HTTP request and passes the parsed request to [`HttpHandler`](./src/http/HttpHandler.sol).
+
+[`HttpHandler`](./src/http/HttpHandler.sol) looks at the parsed HTTP method and path and checks to see if there is a corresponding route set in the `routes` mapping in [`WebApp`](./src/WebApp.sol).
+
+If there is a route configured, [`HttpHandler`](./src/http/HttpHandler.sol) executes a low-level call on your instance of [`WebApp`](./src/WebApp.sol) and forwards the response back to [`HttpServer`](./src/HttpServer.sol).
+
+[`HttpServer`](./src/HttpServer.sol) then serializes the response into `bytes` and returns it to the caller.
+
+If there is no route configured, [`HttpHandler`](./src/http/HttpHandler.sol) will return a `404` response. If an error occurs during request handling, a `400` (Bad Request) or `500` (Internal Server Error) error will be returned depending on where exactly the error occurred. If `debug` mode is enabled on [`WebApp`](./src/WebApp.sol), the error pages will show the full request and response data.
 
 ## Public API
 
