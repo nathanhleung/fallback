@@ -162,6 +162,7 @@ The server will return the data returned by the contract over TCP as well.
 
 1. Write more tests and make sure they pass
 1. Create landing/documentation website
+1. Implement TodoMVC/some sort of todo app using fallback()
 1. Better documentation and examples
 1. Better code comments
 1. Gas optimizations
