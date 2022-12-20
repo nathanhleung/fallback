@@ -1,10 +1,12 @@
 # fallback()
 
-A Solidity web framework / a proof-of-concept of HTTP over Ethereum.
+Write web apps in Solidity.
+
+**fallback()** is a Solidity web framework / a proof-of-concept implementation of HTTP over Ethereum.
 
 ## Getting Started
 
-To create a new web app, extend the `WebApp` contract.
+To create a new Solidity web app, extend the `WebApp` contract.
 
 ```solidity
 contract MyApp is WebApp {
@@ -13,44 +15,26 @@ contract MyApp is WebApp {
         routes[HttpMessages.Method.GET]["/"] = "getIndex";
     }
 
-    // Add the route handler. Make sure it takes both a
-    // `string[]` and a `bytes` parameter, even if those
-    // parameters aren't used.
-    function getIndex(
-        string[] memory requestHeaders,
-        bytes memory requestContent
-    )
-        external
-        override
-        returns (
-            uint16 statusCode,
-            string[] memory responseHeaders,
-            string memory responseContent
-        )
-    {
-        statusCode = 200;
-
-        responseHeaders = new string[](1);
-        responseHeaders[0] = "Content-Type: text/html";
-
-        responseContent = "<!DOCTYPE html>"
-        "<html>"
-        "<head><title>Hello World</title></head>"
-        "<body><p>What hath god wrought?</p></body>"
-        "</html>";
-
-        return (statusCode, responseHeaders, responseContent);
+    // Add the route handler.
+    function getIndex(HttpMessages.Request calldata request) external pure returns (HttpMessages.Response memory) {
+        string memory htmlString = H.html5(
+            H.body(
+                StringConcat.concat(
+                    H.h1("fallback() web framework"),
+                    H.p(H.i("a solidity web framework"))
+                )
+            )
+        );
+        return html(htmlString);
     }
 }
 ```
 
-To override the default 404 and error pages, override the `handle*` functions in `WebApp`.
-
-Then, extend the `HttpServer` contract and pass it the web app.
+Then, extend the `DefaultServer` contract and pass it the web app.
 
 ```solidity
-contract MyServer is HttpServer {
-    constructor() HttpServer(new MyApp()) {
+contract MyServer is DefaultServer {
+    constructor() DefaultServer(new MyApp()) {
       app.setDebug(true);
     }
 }
@@ -60,7 +44,7 @@ Deploy `MyServer`, then send it HTTP request bytes in the `data` field of a tran
 
 ## How It Works
 
-Deploy `HttpServer.sol:HttpServer` as a contract. Then send a transaction to the contract with a UTF-8 hex-encoded HTTP request as data. The returned data will be an HTTP response.
+When you send a transaction to the deployed `HttpServer` contract with a UTF-8 hex-encoded HTTP request as data, the contract will return a hex-encoded HTTP response.
 
 ### Example
 
@@ -73,48 +57,77 @@ const jsonRpcData = JSON.stringify({
     {
       to: CONTRACT_ADDRESS,
       data: Buffer.from(
-        "GET / HTTP/1.1\n" +
-          "Host: 127.0.0.1\n" +
-          "Accept-Language: en-US,en\n",
-        "utf-8"
+        "GET / HTTP/1.1\r\n" +
+          "Host: 127.0.0.1\r\n" +
+          "Accept-Language: en-US,en"
       ).toString("hex"),
     },
   ],
 });
 ```
 
-## Pubic API
+With [Foundry](https://github.com/foundry-rs/foundry/), when we run
 
-- `HttpServer.sol:HttpServer`: Extend this contract to wrap a `WebApp` in HTTP handling Solidity code
-- `WebApp.sol:WebApp`: Extend this contract to define routes in a custom web app
-- `utils/H.sol:H`: Solidity HTML DSL
+```solidity
+bytes memory getIndexRequest = bytes(
+    "GET / HTTP/1.1\r\n"
+    "Host: 127.0.0.1\r\n"
+    "Accept-Language: en-US,en\r\n"
+);
+
+(, bytes memory getIndexResponseBytes) = address(httpServer).call(
+    getIndexRequest
+);
+console.log(string(getIndexResponseBytes));
+```
+
+the output will be
+
+```
+HTTP/1.1 200 OK
+Server: fallback()
+Content-Type: text/html
+Date: 1
+Content-Length: 1232
+
+<html><head><title>fallback() Web Framework</title><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+// ... more html ...
+```
+
+## Public API
+
+- `src/HttpServer.sol:DefaultServer`: Extend this contract to quickly create a Solidity HTTP server from a `WebApp` instance
+- `src/HttpServer.sol:HttpServer`: Extend this to customize your HTTP server's request handling behavior (e.g. change maximum headers, path length, etc.)
+- `src/WebApp.sol:WebApp`: Extend this contract to define routes in a custom web app
+- `src/html-dsl/H.sol:H`: A Solidity HTML DSL
 
 ## Repository Structure
 
-- `script`: Forge scripts
-- `src`: Contract source code
-  - `example`: Example implementation
-  - `utils`: Utility libraries/contracts
-    - `H.sol`: Solidity HTML DSL
-  - `Http.sol`: Internal framework code related to HTTP
-  - `HttpServer.sol`: Extend this contract to wrap a `WebApp` in HTTP handling Solidity code
+- `script/`: Forge scripts
+- `test/`: Forge unit tests
+- `src/`: Contract source code
+  - `example/`: Example web app + HTTP server implementation
+  - `html-dsl/`: Solidity HTML DSL contracts
+    - `H.sol`: Public API of Solidity HTML DSL
+  - `http/*.sol`: Internal framework code related to HTTP
+  - `HttpServer.sol`: Extend the `HttpServer` or `DefaultServer` contracts with a `WebApp` to create a Solidity HTTP server
   - `WebApp.sol`: Extend this contract to define routes in a custom web app
 
 ## Testing
 
 ### Unit Tests
 
-Forge unit tests are located in the `test` directory.
+Forge unit tests are located in `test/` directories, colocated with source code in `src/`.
 
-Run `forge test --match-path "src/**/*.t.sol" -vvv"`, or `forge test` to run with the fuzzer.
+Run tests with `forge test --match-path "src/**/*.t.sol" -vvvvv"`.
 
-### Integration
+### Integration Tests
 
 To test that all the Solidity contracts work together, run `forge script script/HttpServer.s.sol`.
 
 This script sends some example requests to the `ExampleServer` and prints the output.
 
-### End-to-End
+### End-to-End Tests
 
 To test that the contracts work when deployed, run `anvil` to start a local testnet, then grab one of the generated private keys.
 
@@ -128,4 +141,8 @@ The server will return the data returned by the contract over TCP as well.
 
 ## Todo
 
-Gas optimizations
+1. Write more tests and make sure they pass
+1. Create landing/documentation website
+1. Better documentation and examples
+1. Better code comments
+1. Gas optimizations
