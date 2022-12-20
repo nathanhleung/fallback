@@ -38,7 +38,7 @@ library StringCompare {
      *     by checking the string against the prefix byte-by-byte.
      * @param str The string to check the prefix against
      * @param prefix The prefix
-     * @return whether the string starts with the prefix
+     * @return Whether the string starts with the prefix
      */
     function startsWith(string memory str, string memory prefix)
         internal
@@ -59,5 +59,51 @@ library StringCompare {
         }
 
         return true;
+    }
+
+    /**
+     * @dev Determines whether one string contains another by
+     *     checking byte-by-byte.
+     * @param str The string that may contain the substring
+     * @param substr The substring to check containment of
+     * @return Whether the string contains the substring
+     */
+    function contains(string memory str, string memory substr)
+        internal
+        pure
+        returns (bool)
+    {
+        bytes memory bStr = bytes(str);
+        bytes memory bSubstr = bytes(substr);
+
+        if (bStr.length < bSubstr.length) {
+            return false;
+        }
+
+        // All strings contain the empty string
+        if (bSubstr.length == 0) {
+            return true;
+        }
+
+        uint256 matchedChars = 0;
+        for (uint256 i = 0; i < bStr.length; i += 1) {
+            // If we don't have a match, try matching
+            // again from the beginning.
+            if (bStr[i] != bSubstr[matchedChars]) {
+                matchedChars = 0;
+            }
+
+            // If we do have a match, try to match the next
+            // character
+            if (bStr[i] == bSubstr[matchedChars]) {
+                matchedChars += 1;
+            }
+
+            if (matchedChars == bSubstr.length) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

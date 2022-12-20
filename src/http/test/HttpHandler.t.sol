@@ -3,8 +3,8 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import {HttpHandler} from "../src/http/HttpHandler.sol";
-import {SimpleExampleApp} from "../src/example/SimpleExample.sol";
+import {SimpleExampleApp} from "../../example/SimpleExample.sol";
+import {HttpHandler} from "../HttpHandler.sol";
 
 contract HttpHandlerTest is Test {
     HttpHandler public httpHandler;

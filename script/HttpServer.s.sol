@@ -25,52 +25,52 @@ contract HttpServerTest is Script {
         );
         console.log(string(getIndexResponseBytes));
 
-        // bytes memory getGithubRequest = bytes(
-        //     "GET /github HTTP/1.1\r\n"
-        //     "Host: 127.0.0.1\r\n"
-        //     "Accept-Language: en-US,en\r\n"
-        // );
+        bytes memory getGithubRequest = bytes(
+            "GET /github HTTP/1.1\r\n"
+            "Host: 127.0.0.1\r\n"
+            "Accept-Language: en-US,en\r\n"
+        );
 
-        // (, bytes memory getGithubResponseBytes) = address(httpServer).call(
-        //     getGithubRequest
-        // );
-        // console.log(string(getGithubResponseBytes));
+        (, bytes memory getGithubResponseBytes) = address(httpServer).call(
+            getGithubRequest
+        );
+        console.log(string(getGithubResponseBytes));
 
-        // bytes memory getNotFoundRequest = bytes(
-        //     "GET /nonexistent HTTP/1.1\r\n"
-        //     "Host: 127.0.0.1\r\n"
-        //     "Accept-Language: en-US,en\r\n"
-        // );
+        bytes memory getNotFoundRequest = bytes(
+            "GET /nonexistent HTTP/1.1\r\n"
+            "Host: 127.0.0.1\r\n"
+            "Accept-Language: en-US,en\r\n"
+        );
 
-        // (, bytes memory getNotFoundResponseBytes) = address(httpServer).call(
-        //     getNotFoundRequest
-        // );
-        // console.log(string(getNotFoundResponseBytes));
+        (, bytes memory getNotFoundResponseBytes) = address(httpServer).call(
+            getNotFoundRequest
+        );
+        console.log(string(getNotFoundResponseBytes));
 
-        // bytes memory postFormRequest = bytes(
-        //     "POST /form HTTP/1.1\r\n"
-        //     "Host: 127.0.0.1\r\n"
-        //     "Accept-Language: en-US,en\r\n"
-        //     "Content-Length: 27\r\n"
-        //     "\r\n"
-        //     "name=nate&favorite_number=2"
-        // );
+        bytes memory postFormRequest = bytes(
+            "POST /form HTTP/1.1\r\n"
+            "Host: 127.0.0.1\r\n"
+            "Accept-Language: en-US,en\r\n"
+            "Content-Length: 27\r\n"
+            "\r\n"
+            "name=nate&favorite_number=2"
+        );
 
-        // (, bytes memory postFormResponseBytes) = address(httpServer).call(
-        //     postFormRequest
-        // );
-        // console.log(string(postFormResponseBytes));
+        (, bytes memory postFormResponseBytes) = address(httpServer).call(
+            postFormRequest
+        );
+        console.log(string(postFormResponseBytes));
 
-        // bytes memory getErrorRequest = bytes(
-        //     "GET /error HTTP/1.1\r\n"
-        //     "Host: 127.0.0.1\r\n"
-        //     "Accept-Language: en-US,en\r\n"
-        // );
+        bytes memory getErrorRequest = bytes(
+            "GET /error HTTP/1.1\r\n"
+            "Host: 127.0.0.1\r\n"
+            "Accept-Language: en-US,en\r\n"
+        );
 
-        // (, bytes memory getErrorResponseBytes) = address(httpServer).call(
-        //     getErrorRequest
-        // );
-        // console.log(string(getErrorResponseBytes));
+        (, bytes memory getErrorResponseBytes) = address(httpServer).call(
+            getErrorRequest
+        );
+        console.log(string(getErrorResponseBytes));
 
         bytes memory getJsonRequest = bytes(
             "GET /json HTTP/1.1\r\n"

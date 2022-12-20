@@ -10,8 +10,9 @@ import {StringCompare} from "../strings/StringCompare.sol";
 import {HttpConstants} from "./HttpConstants.sol";
 
 /**
- * Utility contract to for working with HTTP messages (i.e. requests and
- * responses).
+ * @title HttpMessages, a utility contract to for working with HTTP messages
+ * @dev This contract contains utilities for working with HTTP requests and
+ *     responses.
  */
 contract HttpMessages {
     using StringCase for string;
@@ -23,75 +24,106 @@ contract HttpMessages {
 
     struct Options {
         /**
-         * The maximum number of HTTP request headers to support.
+         * @dev The maximum number of HTTP request headers to support.
          */
         uint256 maxRequestHeaders;
         /**
-         * The maximum length of a single HTTP request header to support.
+         * @dev The maximum length of a single HTTP request header to support.
          */
         uint256 maxRequestHeaderLength;
         /**
-         * The maximum path length to support.
+         * @dev The maximum path length to support.
          */
         uint256 maxPathLength;
     }
 
+    /**
+     * @dev A struct that can hold deserialized HTTP request data
+     */
     struct Request {
         /**
-         * The HTTP method of the request
+         * @dev The HTTP method of the request
          */
         HttpConstants.Method method;
         /**
-         * The path of the request
+         * @dev The path of the request
          */
         string path;
         /**
-         * Request headers
+         * @dev Request headers
          */
         string[] headers;
         /**
-         * Request content legnth
+         * @dev Request content legnth
          */
         uint256 contentLength;
         /**
-         * Request content
+         * @dev Request content
          */
         bytes content;
         /**
-         * Raw request bytes
+         * @dev Raw request bytes
          */
         bytes raw;
     }
 
+    /**
+     * @dev A struct that can hold HTTP response data before
+     *     it is serialized and returned to the caller.
+     */
     struct Response {
         /**
-         * Response status code
+         * @dev Response status code
          */
         uint16 statusCode;
         /**
-         * Response headers
+         * @dev Response headers
          */
         string[] headers;
         /**
-         * Response content
+         * @dev Response content
          */
         string content;
     }
 
     Options options;
     HttpConstants constants = new HttpConstants();
+
+    /**
+     * @dev Important bytes used in HTTP requests/responses
+     */
     bytes1 constant SPACE_BYTE = hex"20";
     bytes1 constant CARRIAGE_RETURN_BYTE = hex"0D";
     bytes1 constant LINE_FEED_BYTE = hex"0A";
 
+    /**
+     * @dev Creates a new `HttpMessages` instance. `_options`
+     *     controls things like the maximum number of headers,
+     *     maximum length of headers, etc.
+     */
     constructor(Options memory _options) {
+        require(
+            _options.maxRequestHeaders > 0,
+            "_options.maxRequestHeaders must be greater than 0"
+        );
+        require(
+            _options.maxRequestHeaderLength > 0,
+            "_options.maxRequestHeaderLength must be greater than 0"
+        );
+        require(
+            _options.maxPathLength > 0,
+            "_options.maxPathLength must be greater than 0"
+        );
         options = _options;
     }
 
     /**
-     * Gets the next non-space character's index,
-     * starting at `startIndex`. If the character at
-     * `startIndex` is already a space, returns immediately.
+     * @dev Gets the next non-space character's index,
+     *     starting at `startIndex`. If the character at
+     *     `startIndex` is already a space, returns immediately.
+     * @param startIndex The index to start searching at
+     * @param messageBytes The raw bytes of the message to search through
+     * @return nextNonSpaceIndex The index of the next non-space character
      */
     function getNextNonSpaceIndex(
         uint256 startIndex,
@@ -111,10 +143,16 @@ contract HttpMessages {
     }
 
     /**
-     * Gets the index of the start of the next (HTTP) line,
-     * starting at `startIndex`. Specifically, it looks for the
-     * first index after the next `\r\n`. If `startIndex` is
-     * already a `\n` after a `\r`, returns immediately.
+     * @dev Gets the index of the start of the next (HTTP) line,
+     *     starting at `startIndex`. Specifically, it looks for the
+     *     first index after the next `\r\n`. If `startIndex` is
+     *     already a `\n` after a `\r`, returns immediately.
+     * @param startIndex The index to start searching at
+     * @param messageBytes The raw bytes of the message to search through
+     * @return nextLineIndex The index of the start of the next line, or the
+     *     index right after the end of the last line. If there is no next
+     *     line, returns the length of the message (i.e. the index after the
+     *     last index).
      */
     function getNextLineIndex(uint256 startIndex, bytes calldata messageBytes)
         private
@@ -131,6 +169,7 @@ contract HttpMessages {
         // HTTP uses `\r\n` newlines
         // https://stackoverflow.com/questions/27966357/new-line-definition-for-http-1-1-headers
         while (
+            i < messageBytes.length &&
             messageBytes[i - 1] != CARRIAGE_RETURN_BYTE &&
             messageBytes[i] != LINE_FEED_BYTE
         ) {
@@ -141,6 +180,12 @@ contract HttpMessages {
         return i;
     }
 
+    /**
+     * Parses the HTTP method and path of the request.
+     * @param requestBytes The raw bytes of the request
+     * @return method The method of the request
+     * @return path The path of the request
+     */
     function parseRequestRoute(bytes calldata requestBytes)
         private
         view
@@ -192,7 +237,8 @@ contract HttpMessages {
     }
 
     /**
-     * Parses request headers from the raw request.
+     * @dev Parses request headers from the raw request.
+     * @param requestBytes The raw bytes of the request
      */
     function parseRequestHeaders(bytes calldata requestBytes)
         private
@@ -206,6 +252,12 @@ contract HttpMessages {
         // Skip to the start of the next line (first line
         // is HTTP method and path).
         uint256 i = getNextLineIndex(0, requestBytes);
+
+        // If the index is past the end of the request,
+        // the request has no headers or content.
+        if (i >= requestBytes.length) {
+            return (i, requestHeaders, 0);
+        }
 
         // Loop through headers until we get two line breaks in a row
         contentLength = 0;
@@ -289,6 +341,14 @@ contract HttpMessages {
         return (i, requestHeaders, contentLength);
     }
 
+    /**
+     * @dev Parses the content out of a raw HTTP request.
+     * @param startIndex the index where the request content starts
+     * @param contentLength the length of the content, as reported in the
+     *     `Content-Length` header
+     * @param requestBytes The raw bytes of the request
+     * @return requestContent The content of the request
+     */
     function parseRequestContent(
         uint256 startIndex,
         uint256 contentLength,
@@ -313,8 +373,10 @@ contract HttpMessages {
     }
 
     /**
-     * Given the raw bytes of an HTTP request, parses out the
-     * method, headers, and request body.
+     * @dev Given the raw bytes of an HTTP request, parses out the
+     *     method, headers, and request body.
+     * @param requestBytes The raw bytes of the request
+     * @return request The parsed request in a `Request` struct
      *
      * TODO(nathanhleung): better handling of pathological cases
      */
@@ -351,9 +413,11 @@ contract HttpMessages {
     }
 
     /**
-     * Given the parts of an HTTP response, builds the response
-     * and returns the raw bytes which can be sent back to the
-     * client.
+     * @dev Given the parts of an HTTP response, builds the response
+     *     and returns the raw bytes which can be sent back to the
+     *     client.
+     * @param response An instance of the `Response` struct
+     * @return responseBytes The `Response` serialized into bytes
      */
     function buildResponse(Response memory response)
         external

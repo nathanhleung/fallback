@@ -106,7 +106,7 @@ const jsonRpcData = JSON.stringify({
 
 Forge unit tests are located in the `test` directory.
 
-Run `forge test --match-path "test/**/*.sol"`, or `forge test` to run with the fuzzer.
+Run `forge test --match-path "src/**/*.t.sol" -vvv"`, or `forge test` to run with the fuzzer.
 
 ### Integration
 
