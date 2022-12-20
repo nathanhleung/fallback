@@ -7,6 +7,15 @@ Write web apps in Solidity with **fallback()**: a Solidity web framework / a pro
 To create a new Solidity web app, extend the [`WebApp`](./src/WebApp.sol) contract.
 
 ```solidity
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.13;
+
+import {H} from "https://github.com/nathanhleung/fallback/src/html-dsl/H.sol";
+import {HttpMessages} from "https://github.com/nathanhleung/fallback/src/http/HttpMessages.sol";
+import {StringConcat} from "https://github.com/nathanhleung/fallback/src/strings/StringConcat.sol";
+import {WebApp} from "https://github.com/nathanhleung/fallback/src/WebApp.sol";
+import {DefaultServer} from "https://github.com/nathanhleung/fallback/src/HttpServer.sol";
+
 contract MyApp is WebApp {
     constructor() {
         // Add routes here
