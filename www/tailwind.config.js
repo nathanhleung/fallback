@@ -1,6 +1,14 @@
+/**
+ * Config based on https://www.swyx.io/tailwind-docusaurus-2022/
+ */
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ["./src/**/*.{js,jsx,ts,tsx}"],
+  corePlugins: {
+    preflight: false, // disable Tailwind's reset
+  },
+  content: ["./src/**/*.{js,jsx,ts,tsx}", "../docs/**/*.mdx"], // my markdown stuff is in ../docs, not /src
+  darkMode: ["class", '[data-theme="dark"]'], // hooks into docusaurus' dark mode settigns
   theme: {
     extend: {},
   },
