@@ -1,0 +1,9 @@
+.githubStarsButton {
+  display: flex;
+  align-items: center;
+}
+
+.githubStarsButton > * {
+  margin-left: 0.25rem;
+  margin-right: 0.25rem;
+}
