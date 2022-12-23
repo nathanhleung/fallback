@@ -56,6 +56,23 @@ abstract contract WebApp is Ownable {
     }
 
     /**
+     * @dev Creates an HTTP text response with the correct
+     *     text `Content-Type` header set.
+     */
+    function text(string memory text)
+        internal
+        pure
+        returns (HttpMessages.Response memory response)
+    {
+        string[] memory responseHeaders = new string[](1);
+        responseHeaders[0] = "Content-Type: text/plain";
+
+        response.headers = responseHeaders;
+        response.content = text;
+        return response;
+    }
+
+    /**
      * @dev Creates an HTTP JSON response with the correct
      *     JSON `Content-Type` header set.
      */
@@ -113,7 +130,10 @@ abstract contract WebApp is Ownable {
     function getIndex(HttpMessages.Request calldata request)
         external
         virtual
-        returns (HttpMessages.Response memory);
+        returns (HttpMessages.Response memory)
+    {
+        return text("Hello world!");
+    }
 
     /**
      * @dev Default 404 Not Found handler
