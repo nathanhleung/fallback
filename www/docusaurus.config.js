@@ -3,6 +3,7 @@
 
 const lightCodeTheme = require("prism-react-renderer/themes/github");
 const darkCodeTheme = require("prism-react-renderer/themes/dracula");
+const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -48,7 +49,7 @@ const config = {
 
   plugins: [
     // https://www.swyx.io/tailwind-docusaurus-2022/
-    async (context, options) => {
+    async () => {
       return {
         name: "docusaurus-tailwindcss",
         configurePostCss(postcssOptions) {
@@ -56,6 +57,22 @@ const config = {
           postcssOptions.plugins.push(require("tailwindcss"));
           postcssOptions.plugins.push(require("autoprefixer"));
           return postcssOptions;
+        },
+      };
+    },
+    // Add Node module polyfills
+    () => {
+      return {
+        name: "docusaurus-node-polyfills",
+        configureWebpack() {
+          return {
+            resolve: {
+              fallback: {
+                fs: false,
+              },
+            },
+            plugins: [new NodePolyfillPlugin()],
+          };
         },
       };
     },
