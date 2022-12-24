@@ -1,0 +1,294 @@
+---
+sidebar_position: 1
+---
+
+# Quick Start
+
+Here's how you can create your own fallback() Solidity web app and expose it to the web.
+
+## 1. Extend <code>WebApp</code>
+
+Create a new file called `MyApp.sol` and extend the `WebApp` contract.
+
+The GitHub imports in the code samples below will work on [Remix](https://remix.ethereum.org/); you may need to change the URL imports to relative imports if you're developing locally and you cloned the [fallback repository](https://github.com/nathanhleung/fallback) or installed fallback() with [Forge](https://github.com/foundry-rs/foundry/tree/master/forge).
+
+```solidity title="MyApp.sol"
+import {WebApp} from "https://github.com/nathanhleung/fallback/blob/main/src/WebApp.sol";
+
+contract MyApp is WebApp {
+    constructor() {
+    }
+}
+```
+
+## 2. Add your routes
+
+Import the `HttpConstants` contract and add your routes to the `routes` mapping, specifying the correct HTTP `method` and `path`.
+
+The `routes` mapping is defined in the `WebApp` contract.
+
+```solidity title="MyApp.sol" showLineNumbers
+// highlight-start
+import {HttpConstants} from "https://github.com/nathanhleung/fallback/blob/main/src/http/HttpConstants.sol";
+// highlight-end
+import {WebApp} from "https://github.com/nathanhleung/fallback/blob/main/src/WebApp.sol";
+
+contract MyApp is WebApp {
+    constructor() {
+        // highlight-start
+        routes[HttpConstants.Method.GET]["/"] = "getIndex";
+        routes[HttpConstants.Method.GET]["/github"] = "getGithub";
+        // highlight-end
+    }
+}
+```
+
+## 3. Create contract functions for your routes
+
+Create functions in the `MyApp` contract to handle your routes. Make sure the function signature of each route handler is `functionName(HttpMessages.Request)` or `functionName()` (if your route handler doesn't need access to the `Request` struct).
+
+Your route handler function can have almost any name (as long as it doesn't overlap with one of `WebApp`'s response helpers; more on this below).
+
+Always make sure your route handler function has a valid function signature and the route handler function's name is typed correctly in the `routes` mapping.
+
+> Internally, fallback() will parse incoming HTTP requests and use the `routes` mapping to determine which contract function to call. It will call the function using its [function selector](https://solidity-by-example.org/function-selector/), which depends on the function's parameters.
+>
+> If your route handler functions don't have the correct function signature, fallback() will generate an incorrect function selector and your route handler function won't be called.
+
+```solidity title="MyApp.sol" showLineNumbers
+import {HttpConstants} from "https://github.com/nathanhleung/fallback/blob/main/src/http/HttpConstants.sol";
+// highlight-start
+import {HttpMessages} from "https://github.com/nathanhleung/fallback/blob/main/src/http/HttpMessages.sol";
+// highlight-end
+import {WebApp} from "https://github.com/nathanhleung/fallback/blob/main/src/WebApp.sol";
+
+contract MyApp is WebApp {
+    constructor() {
+        routes[HttpConstants.Method.GET]["/"] = "getIndex";
+        routes[HttpConstants.Method.GET]["/github"] = "getGithub";
+    }
+
+    // highlight-start
+    function getIndex(HttpMessages.Request calldata request) external pure override returns (HttpMessages.Response memory) {
+    }
+    // highlight-end
+
+    // highlight-start
+    function getGithub() external pure returns (HttpMessages.Response memory) {
+    }
+    // highlight-end
+}
+```
+
+## 4. Implement your routes
+
+Implement your route handlers in `MyApp.sol`. You can import `H`, fallback()'s companion Solidity HTML DSL, and use the `html` function to return an HTML response.
+
+The full list of available `WebApp` response helpers (e.g. `text`, `json`, `redirect`) is in the [API Reference](/api). You can also build an `HttpMessages.Response` struct from scratch and return that.
+
+> The response helpers build `HttpMessages.Response` instances with specific headers (e.g. the `json` response helper function builds a `Response` with a `Content-Type: application/json` header).
+>
+> The response helpers are defined on `WebApp`, so you cannot create route handler functions with names matching any of the response helpers; the Solidity compiler will output an error (since the functions are not marked `virtual`).
+
+```solidity title="MyApp.sol" showLineNumbers
+// highlight-start
+import {H} from "https://github.com/nathanhleung/fallback/blob/main/src/html-dsl/H.sol";
+// highlight-end
+import {HttpConstants} from "https://github.com/nathanhleung/fallback/blob/main/src/http/HttpConstants.sol";
+import {HttpMessages} from "https://github.com/nathanhleung/fallback/blob/main/src/http/HttpMessages.sol";
+// highlight-start
+import {StringConcat} from "https://github.com/nathanhleung/fallback/blob/main/src/strings/StringConcat.sol";
+// highlight-end
+import {WebApp} from "https://github.com/nathanhleung/fallback/blob/main/src/WebApp.sol";
+
+contract MyApp is WebApp {
+    constructor() {
+        routes[HttpConstants.Method.GET]["/"] = "getIndex";
+        routes[HttpConstants.Method.GET]["/github"] = "getGithub";
+    }
+
+    // highlight-start
+    function getIndex(HttpMessages.Request calldata request) external pure override returns (HttpMessages.Response memory) {
+        string memory htmlString = H.html5(
+            H.body(
+                StringConcat.concat(
+                    H.h1("fallback() web framework"),
+                    H.p(H.i("a solidity web framework"))
+                )
+            )
+        );
+        return html(htmlString);
+    }
+    // highlight-end
+
+    // highlight-start
+    function getGithub() external pure returns (HttpMessages.Response memory) {
+        return redirect(302, "https://github.com/nathanhleung/fallback");
+    }
+    // highlight-end
+}
+```
+
+## 5. Pass your app to the <code>DefaultServer</code> contract
+
+Once you've implemented your route handlers, create a new contract `MyServer` which extends `DefaultServer`. Pass an instance of `MyApp` to `DefaultServer`'s constructor.
+
+> `DefaultServer` extends the `HttpServer` contract and automatically sets a few reasonable request parsing defaults (e.g. it sets `maximumRequestHeaders` to `4000` and `maxPathLength` to `4000` too). These defaults are generally [based on Apache's defaults](https://stackoverflow.com/questions/1289585/what-is-apaches-maximum-url-length).
+>
+> If you want to customize request parsing behavior, you can construct your own instance of `HttpServer` separately, but the `DefaultServer` should suffice for most use-cases.
+
+```solidity title="MyServer.sol" showLineNumbers
+import {DefaultServer} from "https://github.com/nathanhleung/fallback/blob/main/src/HttpServer.sol";
+import {MyApp} from "./MyApp.sol";
+
+contract MyServer is DefaultServer {
+    constructor() DefaultServer(new MyApp()) {
+        app.setDebug(true);
+    }
+}
+```
+
+## 6. Deploy <code>MyServer</code>
+
+Then, compile and deploy the `MyServer` contract.
+
+The deployment example below uses [Foundry](https://github.com/foundry-rs/foundry)'s [Forge](https://github.com/foundry-rs/foundry/tree/master/forge), but you could also use other tools like [Remix](https://remix.ethereum.org/) or [Hardhat](https://hardhat.org/) to deploy your contract.
+
+```shell title="Terminal"
+forge create MyServer.sol:MyServer
+```
+
+## 7. Send HTTP requests to the contract
+
+When you send HTTP requests to the `MyServer` contract (hex-encoded into the `data` field of a transaction), the return value will be a hex-encoded HTTP response.
+
+```javascript title="request.js" showLineNumbers
+const http = require("http");
+
+// Construct JSON-RPC request
+const jsonRpcData = JSON.stringify({
+  jsonrpc: "2.0",
+  id: "1",
+  method: "eth_call",
+  params: [
+    {
+      to: CONTRACT_ADDRESS,
+      // HTTP request to send to contract
+      data: "GET / HTTP/1.1\\r\\nHost: 127.0.0.1".toString("hex"),
+    },
+  ],
+});
+
+// Send JSON-RPC request
+const httpRequest = http.request(
+  {
+    host: ETHEREUM_RPC_HOST,
+    path: "/",
+    port: ETHEREUM_RPC_PORT,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  },
+  // Receive response
+  (response) => {
+    let responseData = "";
+    response.on("data", (chunk) => (responseData += chunk));
+    response.on("end", () => {
+      const responseJson = JSON.parse(responseData);
+      const responseBytes = Buffer.from(responseJson.result.slice(2), "hex");
+      console.log(responseBytes.toString());
+      // HTTP/1.1 200 OK
+      // Server: fallback()
+      // Content-Type: text/html
+      // ...
+    });
+  }
+);
+httpRequest.write(jsonRpcData);
+httpRequest.end();
+```
+
+## 8. Exposing your fallback() app to the web
+
+To expose fallback() to the web, you'll need to create a TCP server that can pass messages to and from the Ethereum blockchain.
+
+Here's a Node.js example, using only native modules. It exposes a fallback() web app on port 8080.
+
+```javascript title="server.js" showLineNumbers
+const http = require("http");
+const net = require("net");
+
+const ETHEREUM_RPC_HOST = process.env.ETHEREUM_RPC_HOST || "127.0.0.1";
+const ETHEREUM_RPC_PORT = process.env.ETHEREUM_RPC_PORT || 8545;
+
+// MyApp contract address
+const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
+
+const server = net.createServer((socket) => {
+  socket.on("data", async (requestData) => {
+    // Receive and parse contract response
+    let response = JSON.parse(await handleRequest(requestData));
+
+    try {
+      if (response.result.length > 0) {
+        // Decode contract response
+        const responseData = Buffer.from(response.result.slice(2), "hex");
+        // Send contract response back
+        socket.write(responseData.toString());
+      }
+      socket.end();
+    } catch (err) {
+      console.error(response);
+      console.error(err.toString());
+      socket.end();
+    }
+  });
+});
+
+server.listen(8000, "0.0.0.0", () => {
+  console.log("Server running at localhost:8000");
+});
+
+async function handleRequest(requestData) {
+  return new Promise((resolve) => {
+    const jsonRpcData = JSON.stringify({
+      jsonrpc: "2.0",
+      id: "1",
+      method: "eth_call",
+      params: [
+        {
+          to: CONTRACT_ADDRESS,
+          // Forward TCP data to contract
+          data: requestData.toString("hex"),
+        },
+      ],
+    });
+
+    const httpRequest = http.request(
+      {
+        host: ETHEREUM_RPC_HOST,
+        path: "/",
+        port: ETHEREUM_RPC_PORT,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+      (response) => {
+        let responseData = "";
+        // Receive contract return data over JSON-RPC
+        response.on("data", (chunk) => (responseData += chunk));
+        // Send contract return data back to caller
+        response.on("end", () => resolve(responseData));
+      }
+    );
+    httpRequest.write(jsonRpcData);
+    httpRequest.end();
+  });
+}
+```
+
+To put this into production, you could run this script on an AWS EC2 instance and [use NGINX to forward requests from port 80 to 8080](https://www.digitalocean.com/community/tutorials/how-to-set-up-a-node-js-application-for-production-on-ubuntu-20-04).
+
+You could also add HTTPS support by [configuring NGINX with Let's Encrypt](https://www.digitalocean.com/community/tutorials/how-to-secure-nginx-with-let-s-encrypt-on-ubuntu-20-04).

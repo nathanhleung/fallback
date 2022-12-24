@@ -47,15 +47,6 @@ contract MyApp is WebApp {
         response.content = "${responseContent}";
         return response;
     }
-
-    ${
-      routeFunctionName !== "getIndex"
-        ? `function getIndex(HttpMessages.Request calldata request) external pure override returns (HttpMessages.Response memory response) {
-        request;
-        return response;
-      }`
-        : ""
-    }
 }
 
 contract MyServer is DefaultServer {

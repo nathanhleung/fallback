@@ -8,7 +8,7 @@ const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: "fallback()",
-  tagline: "Write web apps in Solidity",
+  tagline: "Write web apps in Solidity. Serve HTTP over Ethereum.",
   url: "https://fallback.natecation.xyz",
   baseUrl: "/",
   onBrokenLinks: "throw",
@@ -89,10 +89,28 @@ const config = {
         },
         items: [
           {
-            type: "doc",
-            docId: "intro",
+            to: "/docs/quickstart",
             position: "left",
-            label: "Docs",
+            label: "Quick Start",
+            activeBaseRegex: "quickstart",
+          },
+          {
+            to: "/docs/how-it-works",
+            position: "left",
+            label: "How It Works",
+            activeBaseRegex: "how-it-works",
+          },
+          {
+            to: "/docs/api",
+            position: "left",
+            label: "API Reference",
+            activeBaseRegex: "api",
+          },
+          {
+            to: "/docs/roadmap",
+            position: "left",
+            label: "Roadmap",
+            activeBaseRegex: "roadmap",
           },
           {
             href: "https://github.com/nathanhleung/fallback",
@@ -108,8 +126,20 @@ const config = {
             title: "Links",
             items: [
               {
-                label: "Docs",
-                to: "/docs/intro",
+                label: "Quick Start",
+                to: "/docs/quickstart",
+              },
+              {
+                label: "How It Works",
+                to: "/docs/how-it-works",
+              },
+              {
+                label: "API Reference",
+                to: "/docs/api",
+              },
+              {
+                label: "Roadmap",
+                to: "/docs/roadmap",
               },
               {
                 label: "GitHub",

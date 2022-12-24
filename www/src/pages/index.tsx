@@ -4,12 +4,12 @@ import Head from "@docusaurus/Head";
 import Link from "@docusaurus/Link";
 import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 import { Chain, Common, Hardfork } from "@ethereumjs/common";
-import { EVM } from "@ethereumjs/evm";
-import { DefaultStateManager } from "@ethereumjs/statemanager";
-import { EEI } from "@ethereumjs/vm";
-import { Blockchain } from "@ethereumjs/blockchain";
+import { Transaction } from "@ethereumjs/tx";
+import { Account, Address } from "@ethereumjs/util";
+import { VM } from "@ethereumjs/vm";
 import Layout from "@theme/Layout";
 import CodeBlock from "@theme/CodeBlock";
+import keythereum from "keythereum";
 
 import styles from "./index.module.css";
 import { GithubStarsButton } from "../components/GithubStarsButton";
@@ -23,9 +23,13 @@ function HomepageHeader() {
       <div className="container">
         <h1 className="hero__title dark:text-white">{siteConfig.title}</h1>
         <p className="hero__subtitle">{siteConfig.tagline}</p>
+
         <div className={styles.buttons}>
           <GithubStarsButton />
-          <Link className="button button--primary button--lg" to="/docs/intro">
+          <Link
+            className="button button--primary button--lg"
+            to="/docs/quickstart"
+          >
             Get Started
           </Link>
         </div>
@@ -39,22 +43,21 @@ export default function Home(): JSX.Element {
   const [routeFunctionName, setRouteFunctionName] = useState("getMyPath");
   const [responseContent, setResponseContent] = useState("Hello world!");
   const [compiling, setCompiling] = useState(false);
+  const [deploying, setDeploying] = useState(false);
+  const [contractAddress, setContractAddress] = useState("");
+  const [response, setResponse] = useState("");
   const compileCounterRef = useRef(0);
-  const evmRef = useRef<EVM>();
+  const vmRef = useRef<VM>();
+
+  const common = new Common({
+    chain: Chain.Mainnet,
+    hardfork: Hardfork.Merge,
+  });
 
   useEffect(() => {
-    const common = new Common({
-      chain: Chain.Mainnet,
-      hardfork: Hardfork.Merge,
-    });
-
-    Blockchain.create().then((blockchain) => {
-      const evm = new EVM({
-        common,
-        eei: new EEI(new DefaultStateManager(), common, blockchain),
-      });
-      evmRef.current = evm;
-    });
+    VM.create({
+      common,
+    }).then((vm) => (vmRef.current = vm));
   }, []);
 
   async function compileContract() {
@@ -76,15 +79,66 @@ export default function Home(): JSX.Element {
   }
 
   async function handleCompileAndRun() {
-    setCompiling(true);
+    setContractAddress("");
+    setResponse("");
+
+    let bytecode;
     try {
-      // https://github.com/ethereumjs/ethereumjs-monorepo/blob/master/packages/vm/examples/run-solidity-contract.ts
-      const evm = await compileContract();
-      console.log(evm);
+      setCompiling(true);
+      bytecode = (await compileContract()).bytecode;
     } catch (err) {
       console.log(err);
+      return;
     } finally {
       setCompiling(false);
+    }
+
+    try {
+      setDeploying(true);
+      const privateKey = await new Promise((resolve) => {
+        keythereum.create({}, (dk) => {
+          resolve(dk.privateKey);
+        });
+      });
+
+      // Add balance to account
+      const account = Account.fromAccountData({
+        nonce: 0,
+        balance: BigInt(10) ** BigInt(18),
+      });
+      const senderAddress = Address.fromPrivateKey(privateKey);
+      vmRef.current.stateManager.putAccount(senderAddress, account);
+
+      const deploymentTx = Transaction.fromTxData(
+        {
+          nonce: 0,
+          gasLimit: 10_000_000,
+          gasPrice: 100,
+          value: 0,
+          data: `0x${bytecode.object}`,
+        },
+        { common }
+      ).sign(privateKey);
+
+      const { createdAddress } = await vmRef.current.runTx({
+        tx: deploymentTx,
+      });
+
+      setContractAddress(createdAddress.toString());
+
+      const callResult = await vmRef.current.evm.runCall({
+        to: createdAddress,
+        caller: senderAddress,
+        origin: senderAddress,
+        data: Buffer.from(`GET /${path} HTTP/1.1`),
+      });
+
+      setResponse(callResult.execResult.returnValue.toString("utf-8"));
+    } catch (err) {
+      console.log(err);
+      return;
+    } finally {
+      setDeploying(false);
     }
   }
 
@@ -101,9 +155,13 @@ export default function Home(): JSX.Element {
           crossOrigin="anonymous"
         ></script>
       </Head>
-      <main className="container px-6 mx-auto">
+      <main className="container px-6 mx-auto pb-20">
         <HomepageHeader />
-        <div className="text-center py-8">
+        <div
+          className="text-center py-8"
+          style={{ scrollMarginTop: "50px" }}
+          id="try-it"
+        >
           <h2 className="text-2xl">Try it</h2>
         </div>
 
@@ -111,48 +169,48 @@ export default function Home(): JSX.Element {
           <div className="col-auto">
             <div className="grid gap-4 grid-cols-1 mb-8">
               <div className="col-auto">
-                <h3>Configure a route handler</h3>
-                <label className="block text-gray-700 text-sm font-bold mb-2">
+                <h3>1. Configure a route handler</h3>
+                <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
                   1. Choose a path
                 </label>
                 <input
                   value={path}
                   onChange={(e) => setPath(e.target.value)}
                   placeholder="path"
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline"
                 />
                 <small>The path to write a handler for</small>
               </div>
               <div className="col-auto">
-                <label className="block text-gray-700 text-sm font-bold mb-2">
+                <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
                   2. Name your route handler
                 </label>
                 <input
                   value={routeFunctionName}
                   onChange={(e) => setRouteFunctionName(e.target.value)}
                   placeholder="routeFunctionName"
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline"
                 />
                 <small>
                   The name of the route handler function in the web app contract
                 </small>
               </div>
               <div className="col-auto">
-                <label className="block text-gray-700 text-sm font-bold mb-2">
+                <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
                   3. Write your response content
                 </label>
                 <input
                   value={responseContent}
                   onChange={(e) => setResponseContent(e.target.value)}
                   placeholder="responseContent"
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline"
                 />
                 <small>The content of the HTTP response</small>
               </div>
             </div>
           </div>
           <div className="col-auto">
-            <h3>Generated web app contract</h3>
+            <h3>2. View generated web app contract</h3>
 
             <CodeBlock language="solidity" title="MyApp.sol" showLineNumbers>
               {`import {HttpConstants} from "https://github.com/nathanhleung/fallback/blob/main/src/http/HttpConstants.sol";
@@ -164,7 +222,11 @@ contract MyApp is WebApp {
         routes[HttpConstants.Method.GET]["/${path}"] = "${routeFunctionName}";
     }
 
-    function ${routeFunctionName}(HttpMessages.Request calldata request) external pure returns (HttpMessages.Response memory) {
+    function ${routeFunctionName}(HttpMessages.Request calldata request)
+        external
+        pure${routeFunctionName === "getIndex" ? "\n        override" : ""}
+        returns (HttpMessages.Response memory)
+    {
         HttpMessages.Response memory response;
         response.content = "${responseContent}";
         return response;
@@ -173,211 +235,59 @@ contract MyApp is WebApp {
             </CodeBlock>
           </div>
           <div className="col-auto">
-            <h3>Compile and send request</h3>
-            <CodeBlock language="javascript" title="request.js">{`
+            <h3>3. Compile and send request</h3>
+            <CodeBlock language="javascript" title="request.js">
+              {`
+${contractAddress ? `const CONTRACT_ADDRESS = "${contractAddress}";` : ""}
+
 const request = "GET /${path} HTTP/1.1";
-web3.eth.call({
+const result = await web3.eth.call({
   to: CONTRACT_ADDRESS,
   data: Buffer.from(request).toString("hex");
 });
-        `}</CodeBlock>
+console.log(Buffer.from(result, "hex").toString());
+        `.trim()}
+            </CodeBlock>
             <button
-              className="button button--primary button--lg"
+              className="button button--secondary  button--lg"
               onClick={handleCompileAndRun}
-              disabled={compiling}
+              disabled={compiling || deploying}
             >
-              {compiling ? "Compiling..." : "Compile and Run"}
+              {compiling
+                ? "Compiling..."
+                : deploying
+                ? "Deploying..."
+                : "Compile and Run Locally"}
             </button>
+            <small className="mt-2 block">
+              {compiling ? "Compilation may take a moment, please wait..." : ""}
+            </small>
+          </div>
+          <div className="col-auto">
+            <h3>4. Decode contract return value</h3>
+            <CodeBlock title="Decoded Contract Return Value">
+              {response
+                ? response
+                : compiling || deploying
+                ? "Compiling..."
+                : "// Compile and run to see response"}
+            </CodeBlock>
+            {response && (
+              <>
+                <p>
+                  Now that you've tried it, you can write your own fallback()
+                  app too!
+                </p>
+                <Link
+                  className="button button--primary button--lg"
+                  to="/docs/quickstart"
+                >
+                  Go to Quickstart
+                </Link>
+              </>
+            )}
           </div>
         </div>
-        <div className="grid-cols-2"></div>
-        <div className="text-center py-8">
-          <h2 className="text-2xl">
-            Create a Solidity web app in a few easy steps
-          </h2>
-        </div>
-        <section className="space-y-12">
-          <section>
-            <h2 className="text-xl">
-              1. Extend <code>WebApp</code>
-            </h2>
-            <CodeBlock language="solidity" title="MyApp.sol" showLineNumbers>
-              {`import {WebApp} from "https://github.com/nathanhleung/fallback/blob/main/src/WebApp.sol";
-
-contract MyApp is WebApp {
-    constructor() {
-    }
-}
-`}
-            </CodeBlock>
-          </section>
-          <section>
-            <h2 className="text-xl">2. Add your routes</h2>
-            <CodeBlock language="solidity" title="MyApp.sol" showLineNumbers>
-              {`// highlight-start
-import {HttpConstants} from "https://github.com/nathanhleung/fallback/blob/main/src/http/HttpConstants.sol";
-// highlight-end
-import {WebApp} from "https://github.com/nathanhleung/fallback/blob/main/src/WebApp.sol";
-
-contract MyApp is WebApp {
-    constructor() {
-        // highlight-start
-        routes[HttpConstants.Method.GET]["/"] = "getIndex";
-        routes[HttpConstants.Method.GET]["/github"] = "getGithub";
-        // highlight-end
-    }
-}
-`}
-            </CodeBlock>
-          </section>
-          <section>
-            <h2 className="text-xl">
-              3. Create contract functions for your routes
-            </h2>
-            <CodeBlock language="solidity" title="MyApp.sol" showLineNumbers>
-              {`import {HttpConstants} from "https://github.com/nathanhleung/fallback/blob/main/src/http/HttpConstants.sol";
-// highlight-start
-import {HttpMessages} from "https://github.com/nathanhleung/fallback/blob/main/src/http/HttpMessages.sol";
-// highlight-end
-import {WebApp} from "https://github.com/nathanhleung/fallback/blob/main/src/WebApp.sol";
-
-contract MyApp is WebApp {
-    constructor() {
-        routes[HttpConstants.Method.GET]["/"] = "getIndex";
-        routes[HttpConstants.Method.GET]["/github"] = "getGithub";
-    }
-
-    // highlight-start
-    function getIndex(HttpMessages.Request calldata request) external pure override returns (HttpMessages.Response memory) {
-    }
-    // highlight-end
-
-    // highlight-start
-    function getGithub() external pure returns (HttpMessages.Response memory) {
-    }
-    // highlight-end
-}
-`}
-            </CodeBlock>
-          </section>
-          <section>
-            <h2 className="text-xl">4. Implement your routes</h2>
-            <CodeBlock language="solidity" title="MyApp.sol" showLineNumbers>
-              {`// highlight-start
-import {H} from "https://github.com/nathanhleung/fallback/blob/main/src/html-dsl/H.sol";
-// highlight-end
-import {HttpConstants} from "https://github.com/nathanhleung/fallback/blob/main/src/http/HttpConstants.sol";
-import {HttpMessages} from "https://github.com/nathanhleung/fallback/blob/main/src/http/HttpMessages.sol";
-// highlight-start
-import {StringConcat} from "https://github.com/nathanhleung/fallback/blob/main/src/strings/StringConcat.sol";
-// highlight-end
-import {WebApp} from "https://github.com/nathanhleung/fallback/blob/main/src/WebApp.sol";
-
-
-contract MyApp is WebApp {
-    constructor() {
-        routes[HttpConstants.Method.GET]["/"] = "getIndex";
-        routes[HttpConstants.Method.GET]["/github"] = "getGithub";
-    }
-
-    // highlight-start
-    function getIndex(HttpMessages.Request calldata request) external pure override returns (HttpMessages.Response memory) {
-        string memory htmlString = H.html5(
-            H.body(
-                StringConcat.concat(
-                    H.h1("fallback() web framework"),
-                    H.p(H.i("a solidity web framework"))
-                )
-            )
-        );
-        return html(htmlString);
-    }
-    // highlight-end
-
-    // highlight-start
-    function getGithub() external pure returns (HttpMessages.Response memory) {
-        return redirect(302, "https://github.com/nathanhleung/fallback");
-    }
-    // highlight-end
-}
-`}
-            </CodeBlock>
-          </section>
-          <section>
-            <h2 className="text-xl">
-              5. Pass your app to the <code>DefaultServer</code> contract
-            </h2>
-            <CodeBlock language="solidity" title="MyServer.sol" showLineNumbers>
-              {`import {DefaultServer} from "https://github.com/nathanhleung/fallback/blob/main/src/HttpServer.sol";
-import {MyApp} from "./MyApp.sol";
-
-contract MyServer is DefaultServer {
-    constructor() DefaultServer(new MyApp()) {
-        app.setDebug(true);
-    }
-}
-`}
-            </CodeBlock>
-          </section>
-          <section>
-            <h2 className="text-xl">
-              6. Deploy <code>MyServer</code>
-            </h2>
-            <CodeBlock language="bash" title="Terminal">
-              {`forge create MyServer.sol:MyServer`}
-            </CodeBlock>
-          </section>
-          <section>
-            <h2 className="text-xl">7. Send HTTP requests to the contract</h2>
-            <CodeBlock language="javascript" title="request.js" showLineNumbers>
-              {`const http = require("http");
-
-// Construct JSON-RPC request
-const jsonRpcData = JSON.stringify({
-  jsonrpc: "2.0",
-  id: "1",
-  method: "eth_call",
-  params: [
-    {
-      to: CONTRACT_ADDRESS,
-      // HTTP request to send to contract
-      data: "GET / HTTP/1.1\\r\\nHost: 127.0.0.1".toString("hex"),
-    },
-  ],
-});
-
-// Send JSON-RPC request
-const httpRequest = http.request(
-  {
-    host: ETHEREUM_RPC_HOST,
-    path: "/",
-    port: ETHEREUM_RPC_PORT,
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  },
-  // Receive response
-  (response) => {
-    let responseData = "";
-    response.on("data", (chunk) => (responseData += chunk));
-    response.on("end", () => {
-      const responseJson = JSON.parse(responseData);
-      const responseBytes = Buffer.from(responseJson.result.slice(2), "hex");
-      console.log(responseBytes.toString());
-      // HTTP/1.1 200 OK
-      // Server: fallback()
-      // Content-Type: text/html
-      // ...
-    });
-  }
-);
-httpRequest.write(jsonRpcData);
-httpRequest.end();
-`}
-            </CodeBlock>
-          </section>
-        </section>
       </main>
     </Layout>
   );
