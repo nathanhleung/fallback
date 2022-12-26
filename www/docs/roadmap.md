@@ -4,44 +4,38 @@ sidebar_position: 4
 
 # Roadmap
 
-Let's discover **Docusaurus in less than 5 minutes**.
+Here are some areas of improvement for the next version of fallback(). Contributions are always welcome!
 
-## Getting Started
+## Tests
 
-Get started by **creating a new site**.
+As of this writing, test coverage is pretty limited. The parts of fallback() that are in greatest need of better tests are:
 
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
+- the utility libraries — those in `src/integers/` and `src/strings/`
+- the core HTTP request parsing code in `HttpMessages.sol`.
 
-### What you'll need
+  > While `HttpMessages.sol` generally seems to perform well on simple, well-formed requests, its performance on malformed and more complex HTTP requests isn't well-tested.
 
-- [Node.js](https://nodejs.org/en/download/) version 16.14 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
+## Gas Optimization
 
-## Generate a new site
+The initial fallback() code was written with limited attention to gas optimization, and there are likely many places in the contracts where gas usage could be cut down. For example:
 
-Generate a new Docusaurus site using the **classic template**.
+- `StringConcat.sol` — in many cases, the `StringConcat.concat` function is just used to create intermediate strings which are subsequently concatenated again. Is it possible to "concatenate by reference" and only allocate a new string once the final concatenated result needs to be used?
 
-The classic template will automatically be added to your project after you run the command:
+## Examples and Documentation
 
-```bash
-npm init docusaurus@latest my-website classic
-```
+Some ideas for improvements in documentation or examples:
 
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
+- Would it be possible to write TodoMVC or something similar using fallback()?
+- Are there any other canonical web app examples we could implement in fallback()?
 
-The command also installs all necessary dependencies you need to run Docusaurus.
+## Code Clarity
 
-## Start your site
+There are places in the code where it isn't exactly clear why something is working (but it still seems to work fine!). For example:
 
-Run the development server:
+- It is unclear why the `fallback` function in `WebApp.sol` needs to return 32 extra bytes for `safeCallApp` in `HttpHandler.sol` to receive the 404 response correctly when a nonexistent route handler function is called (when the 32 bytes aren't added, ABI-decoding the returned data into an `HttpMessage.Response` in `safeCallApp` fails).
 
-```bash
-cd my-website
-npm run start
-```
-
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
-
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
-
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+  > Author's note: As I was developing the `fallback` function in `WebApp` and trying to figure out why ABI-decoding was failing in `safeCallApp`, I decided to compare the returndata of `fallback` to that of a function which already existed on `WebApp`.
+  >
+  > I noticed that when an existing function was called, the returned data had 32 extra bytes at the end versus the returned data from `fallback`. So I changed the assembly to return 32 extra bytes from the `fallback` function. Once I did that, `safeCallApp` started decoding the return value correctly into an `HttpMessage.Response`.
+  >
+  > The exact reason why these bytes needed to be added probably has something to do with the specifics of the `return` opcode and the ABI encoding spec for dynamic `bytes` arrays, but (simply content with it just working for now) I haven't looked deeply enough to figure out the specific reasons why.

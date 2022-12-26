@@ -4,44 +4,184 @@ sidebar_position: 2
 
 # How It Works
 
-Let's discover **Docusaurus in less than 5 minutes**.
+Let's trace through what happens when you send a request to the `MyServer` created in the [Quick Start](/docs/quick-start). An abridged version of the `MyServer` and `MyApp` contracts is reproduced below:
 
-## Getting Started
+```solidity title="MyApp.sol" showLineNumbers
+contract MyApp is WebApp {
+    constructor() {
+        routes[HttpConstants.Method.GET]["/"] = "getIndex";
+        routes[HttpConstants.Method.GET]["/github"] = "getGithub";
+    }
 
-Get started by **creating a new site**.
+    function getIndex(HttpMessages.Request calldata request) external pure override returns (HttpMessages.Response memory) {
+        string memory htmlString = H.html5(
+            H.body(
+                StringConcat.concat(
+                    H.h1("fallback() web framework"),
+                    H.p(H.i("a solidity web framework"))
+                )
+            )
+        );
+        return html(htmlString);
+    }
 
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
+    function getGithub() external pure returns (HttpMessages.Response memory) {
+        return redirect(302, "https://github.com/nathanhleung/fallback");
+    }
+}
 
-### What you'll need
-
-- [Node.js](https://nodejs.org/en/download/) version 16.14 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
-
-## Generate a new site
-
-Generate a new Docusaurus site using the **classic template**.
-
-The classic template will automatically be added to your project after you run the command:
-
-```bash
-npm init docusaurus@latest my-website classic
+contract MyServer is DefaultServer {
+    constructor() DefaultServer(new MyApp()) {
+        app.setDebug(true);
+    }
+}
 ```
 
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
+## 1. `MyServer`
 
-The command also installs all necessary dependencies you need to run Docusaurus.
+First, we send the hex-encoded bytes of an HTTP request to `MyServer`:
 
-## Start your site
-
-Run the development server:
-
-```bash
-cd my-website
-npm run start
+```javascript title="Example Request in JavaScript" showLineNumbers
+const request = "GET /github HTTP/1.1";
+const result = await web3.eth.call({
+  to: MYSERVER_CONTRACT_ADDRESS,
+  data: Buffer.from(request).toString("hex");
+});
 ```
 
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
+`MyServer` has no logic of its own besides its constructor, so when it receives a request, it's actually handled by [`DefaultServer`](https://github.com/nathanhleung/fallback/blob/main/src/HttpServer.sol).
 
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
+```solidity title="MyServer.sol"
+contract MyServer is DefaultServer
+```
 
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+## 2. [`DefaultServer`](https://github.com/nathanhleung/fallback/blob/main/src/HttpServer.sol)
+
+```solidity title="HttpServer.sol"
+contract DefaultServer is HttpServer
+```
+
+[`DefaultServer`](https://github.com/nathanhleung/fallback/blob/main/src/HttpServer.sol) also has no signficant logic of its own — it simply extends the [`HttpServer`](https://github.com/nathanhleung/fallback/blob/main/src/HttpServer.sol) contract and automatically sets a few reasonable request parsing defaults (e.g. it sets `maximumRequestHeaders` to `4000` and `maxPathLength` to `4000`).
+
+> These defaults are generally [based on Apache's defaults](https://stackoverflow.com/questions/1289585/what-is-apaches-maximum-url-length).
+
+So we follow the inheritance chain up to [`HttpServer`](https://github.com/nathanhleung/fallback/blob/main/src/HttpServer.sol).
+
+## 3. [`HttpServer`](https://github.com/nathanhleung/fallback/blob/main/src/HttpServer.sol)
+
+```solidity title="HttpServer.sol"
+contract HttpServer is HttpProxy
+```
+
+[`HttpServer`](https://github.com/nathanhleung/fallback/blob/main/src/HttpServer.sol), in turn, extends [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol). [`HttpServer`](https://github.com/nathanhleung/fallback/blob/main/src/HttpServer.sol) is essentially a public API for [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) since [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) has no constructor.
+
+## 4. [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) Part 1
+
+[`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) is a contract whose only `external` or `public` function is a [`fallback`](https://docs.soliditylang.org/en/v0.8.17/contracts.html#fallback-function) function.
+
+When [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) receives a transaction with `data`, since there are no functions on the contract, the `fallback` function will be called instead.
+
+In its `fallback` function, [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) uses the [`HttpMessages`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpMessages.sol) contract to parse the calldata as if it were an HTTP request and passes the parsed request to [`HttpHandler`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpHandler.sol).
+
+```solidity title="HttpProxy.sol" showLineNumbers
+// Simplified version of `HttpProxy`
+contract HttpProxy {
+    HttpHandler internal handler;
+    HttpMessages internal messages;
+
+    fallback() external {
+        bytes memory requestBytes = msg.data;
+        // Parse request
+        HttpMessages.Request memory request =
+            messages.parseRequest(requestBytes);
+        // Call route handler
+        HttpMessages.Response memory response =
+            handler.handleRoute(request);
+        // ...
+    }
+```
+
+In our case, our parsed request would look like this:
+
+```solidity
+HttpMessages.Request {
+    method: HttpConstants.Method.GET,
+    path: "/github",
+    headers: [],
+    contentLength: 0,
+    content: "",
+    raw: "0x..."
+}
+```
+
+## 5. [`HttpHandler`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpHandler.sol)
+
+[`HttpHandler`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpHandler.sol)'s `handleRoute` function looks at the parsed HTTP method and path and checks to see if there is a corresponding route set in the `routes` mapping in [`WebApp`](https://github.com/nathanhleung/fallback/blob/main/src/WebApp.sol) (in our case, `MyApp`).
+
+```solidity title="MyApp.sol" showLineNumbers
+contract MyApp is WebApp {
+    constructor() {
+        routes[HttpConstants.Method.GET]["/"] = "getIndex";
+        routes[HttpConstants.Method.GET]["/github"] = "getGithub";
+    }
+}
+```
+
+If there is a route configured, [`HttpHandler`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpHandler.sol) executes a low-level call on the instance of [`WebApp`](https://github.com/nathanhleung/fallback/blob/main/src/WebApp.sol) and forwards the response back to [`HttpServer`](https://github.com/nathanhleung/fallback/blob/main/src/httpServer.sol).
+
+In our case, [`HttpHandler`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpHandler.sol) will map our `GET /github` request to the `getGithub` function and call it.
+
+```solidity title="MyApp.sol" showLineNumbers
+function getGithub() external pure returns (HttpMessages.Response memory) {
+    return redirect(302, "https://github.com/nathanhleung/fallback");
+}
+```
+
+The return value from `handleRoute` will be a `HttpMessages.Response` struct that looks like this:
+
+```solidity
+HttpMessages.Response {
+    statusCode: 302,
+    headers: ["Location: https://github.com/nathanhleung/fallback"],
+    content: ""
+}
+```
+
+## 6. [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) Part 2
+
+We're now back in [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) with a response.
+
+```solidity title="HttpProxy.sol" showLineNumbers
+// Simplified version of `HttpProxy`
+contract HttpProxy {
+    HttpHandler internal handler;
+    HttpMessages internal messages;
+
+    fallback() external {
+        bytes memory requestBytes = msg.data;
+        // Parse request
+        HttpMessages.Request memory request =
+            messages.parseRequest(requestBytes);
+        // Call route handler
+        HttpMessages.Response memory response =
+            handler.handleRoute(request);
+        // Serialize `Response` struct into HTTP response bytes
+        return messages.buildResponse(response);
+
+        // (We're using `return` above for simplicity, but technically, you
+        // can't `return` from`fallback` — the above is actually implemented in
+        // inline assembly).
+    }
+```
+
+Finally, we call [`HttpMessages`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpMessages.sol) again to serialize the response into `bytes` and return it to the caller.
+
+## 7. Error Handling
+
+The code samples above are slightly simplified and don't show all the error handling code.
+
+If there is no route configured, [`HttpHandler`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpHandler.sol)'s `handleRoute` will return a `404` response.
+
+If an error occurs during request handling, a `400` (Bad Request) or `500` (Internal Server Error) error will be returned depending on where exactly the error occurred (generally, `400` if it's in `HttpProxy` and `500` if it's in `HttpHandler`).
+
+If `debug` mode is enabled on [`WebApp`](https://github.com/nathanhleung/fallback/blob/main/src/WebApp.sol), the error pages will show the full request and response data.

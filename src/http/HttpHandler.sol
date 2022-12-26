@@ -11,7 +11,8 @@ import {HttpMessages} from "./HttpMessages.sol";
 /**
  * @title HttpHandler, takes `Request`s and returns `Response`s.
  * @dev Maps HTTP requests to the correct routes in the `WebApp`,
- *     and returns HTTP response data.
+ *     calls the route handler corresponding to the request method
+ *     and path, and returns HTTP response data.
  */
 contract HttpHandler {
     using StringConcat for string;
@@ -24,8 +25,9 @@ contract HttpHandler {
     }
 
     /**
-     * @dev Calls the correct function on the web app contract based
-     * on the route passed in.
+     * @dev Calls the correct route handler function on the web app
+     *     contract based on the route (method and path) passed in.
+     * @return the response returned by the route handler
      */
     function handleRoute(HttpMessages.Request memory request)
         external
@@ -77,7 +79,12 @@ contract HttpHandler {
 
     /**
      * @dev Calls the function on the app contract with the given
-     * signature, passing the params.
+     *     signature, passing the params. A "safe" call because
+     *     it will handle returning a `500` if the route handler
+     *     on the `WebApp` reverts. Handles ABI-decoding the
+     *     low-level call.
+     * @return the response returned by the route handler, or a
+     *    500 error response if the route handler reverted.
      */
     function safeCallApp(
         HttpMessages.Request memory request,
@@ -90,7 +97,7 @@ contract HttpHandler {
         // If unsuccessful call, return 500
         if (!success) {
             assembly {
-                // Slice the sighash
+                // Slice the `Error` sighash
                 // https://ethereum.stackexchange.com/questions/83528/how-can-i-get-the-revert-reason-of-a-call-in-solidity-so-that-i-can-use-it-in-th/83577#83577
                 data := add(data, 0x04)
             }

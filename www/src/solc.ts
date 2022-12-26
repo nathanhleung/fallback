@@ -23,7 +23,7 @@ import HttpServerContract from "raw-loader!../../src/HttpServer.sol";
 const solc = wrapper(self.Module);
 
 self.onmessage = ({
-  data: { id, path, routeFunctionName, responseContent },
+  data: { id, path, routeFunctionName, responseType, responseContent },
 }) => {
   const myAppSol = `
 // SPDX-License-Identifier: UNLICENSED
@@ -39,13 +39,13 @@ contract MyApp is WebApp {
         routes[HttpConstants.Method.GET]["/${path}"] = "${routeFunctionName}";
     }
 
-    function ${routeFunctionName}(HttpMessages.Request calldata request) external pure ${
-    routeFunctionName === "getIndex" ? "override " : ""
-  }returns (HttpMessages.Response memory) {
+    function ${routeFunctionName}(HttpMessages.Request calldata request)
+        external
+        pure${routeFunctionName === "getIndex" ? "\n        override" : ""}
+        returns (HttpMessages.Response memory)
+    {
         request;
-        HttpMessages.Response memory response;
-        response.content = "${responseContent}";
-        return response;
+        return ${responseType}('${responseContent}');
     }
 }
 
@@ -124,10 +124,22 @@ contract MyServer is DefaultServer {
     },
   });
 
-  const output = solc.compile(input);
+  const output = JSON.parse(solc.compile(input));
 
-  self.postMessage({
-    id,
-    evm: JSON.parse(output).contracts["MyApp.sol"].MyServer.evm,
-  });
+  if (output.contracts && output.contracts["MyApp.sol"]) {
+    self.postMessage({
+      id,
+      evm: output.contracts["MyApp.sol"].MyServer.evm,
+    });
+  } else if (output.errors && output.errors.length > 0) {
+    self.postMessage({
+      id,
+      errors: output.errors,
+    });
+  } else {
+    self.postMessage({
+      id,
+      errors: [{ formattedMessage: "Compilation failed." }],
+    });
+  }
 };

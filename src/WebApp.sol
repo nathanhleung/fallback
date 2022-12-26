@@ -59,7 +59,7 @@ abstract contract WebApp is Ownable {
      * @dev Creates an HTTP text response with the correct
      *     text `Content-Type` header set.
      */
-    function text(string memory text)
+    function text(string memory textString)
         internal
         pure
         returns (HttpMessages.Response memory response)
@@ -68,7 +68,7 @@ abstract contract WebApp is Ownable {
         responseHeaders[0] = "Content-Type: text/plain";
 
         response.headers = responseHeaders;
-        response.content = text;
+        response.content = textString;
         return response;
     }
 
@@ -106,14 +106,32 @@ abstract contract WebApp is Ownable {
         return response;
     }
 
+    /**
+     * @dev Creates an HTTP redirect response with a 302
+     *     status code (temporary redirect).
+     */
+    function redirect(string memory location)
+        internal
+        pure
+        returns (HttpMessages.Response memory response)
+    {
+        // When no status code is passed, default to 302
+        return redirect(302, location);
+    }
+
+    /**
+     * @dev Creates an HTTP redirect response with the given
+     *     status code
+     */
     function redirect(uint16 statusCode, string memory location)
         internal
         pure
         returns (HttpMessages.Response memory response)
     {
         require(
-            statusCode == 301 || statusCode == 302,
-            "Redirect status code must be 301 or 302"
+            (statusCode >= 301 && statusCode <= 303) ||
+                (statusCode == 307 || statusCode == 308),
+            "Redirect status code must be 301 - 303, 307, or 308"
         );
 
         string[] memory responseHeaders = new string[](1);
@@ -132,11 +150,16 @@ abstract contract WebApp is Ownable {
         virtual
         returns (HttpMessages.Response memory)
     {
+        // Silence "unused variable" compiler warning.
+        request;
         return text("Hello world!");
     }
 
     /**
-     * @dev Default 404 Not Found handler
+     * @dev Default 404 Not Found handler. `public` rather than `external`
+     *     since it's called by the `fallback` function here if a nonexistent
+     *     route handler is called.
+     * @return a default 404 Not Found response
      */
     function handleNotFound(
         HttpMessages.Request memory request,
@@ -147,6 +170,7 @@ abstract contract WebApp is Ownable {
 
     /**
      * @dev Default 400 Bad Request handler
+     * @return a default 400 Bad Request response
      */
     function handleBadRequest(
         HttpMessages.Request calldata request,
@@ -157,6 +181,7 @@ abstract contract WebApp is Ownable {
 
     /**
      * @dev Default 500 Internal Server Error handler
+     * @return a default 500 Internal Server Error response
      */
     function handleError(
         HttpMessages.Request calldata request,
@@ -167,8 +192,9 @@ abstract contract WebApp is Ownable {
 
     /**
      * @dev Default handler for arbitrary status codes, used by
-     * default `handleNotFound`, `handleBadRequest`, and
-     * `handleError`.
+     *     default `handleNotFound`, `handleBadRequest`, and
+     *     `handleError`.
+     * @return a default status code error page response.
      */
     function handleStatusCode(
         HttpMessages.Request memory request,
@@ -237,8 +263,10 @@ abstract contract WebApp is Ownable {
         uint256 responseBytesLength = responseBytes.length;
         assembly {
             // Return returndata, skipping the first 32 bytes
-            // (bytes memory setup)
-            // TODO(nathanhleung) actually figure out why this works
+            // (bytes memory ABI-encoding setup)
+            // TODO(nathanhleung) Actually figure out why this works
+            // For some reason, this doesn't work if I don't add the
+            // extra 32 bytes at the end.
             return(add(responseBytes, 32), add(responseBytesLength, 32))
         }
     }

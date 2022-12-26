@@ -33,6 +33,9 @@ function HomepageHeader() {
             Get Started
           </Link>
         </div>
+        <div className="mt-4">
+          <Link to="/docs/how-it-works">How it Works</Link>
+        </div>
       </div>
     </header>
   );
@@ -41,10 +44,12 @@ function HomepageHeader() {
 export default function Home(): JSX.Element {
   const [path, setPath] = useState("");
   const [routeFunctionName, setRouteFunctionName] = useState("getMyPath");
+  const [responseType, setResponseType] = useState("text");
   const [responseContent, setResponseContent] = useState("Hello world!");
   const [compiling, setCompiling] = useState(false);
   const [deploying, setDeploying] = useState(false);
   const [contractAddress, setContractAddress] = useState("");
+  const [requestPath, setRequestPath] = useState("");
   const [response, setResponse] = useState("");
   const compileCounterRef = useRef(0);
   const vmRef = useRef<VM>();
@@ -61,24 +66,31 @@ export default function Home(): JSX.Element {
   }, []);
 
   async function compileContract() {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const id = compileCounterRef.current;
       solc.postMessage({
         id,
         path,
         routeFunctionName,
+        responseType,
         responseContent,
       });
       compileCounterRef.current += 1;
       solc.onmessage = ({ data }) => {
         if (data.id === id) {
-          resolve(data.evm);
+          if (data.evm) {
+            resolve(data.evm);
+          } else if (data.errors) {
+            reject(data.errors);
+          }
         }
       };
     });
   }
 
-  async function handleCompileAndRun() {
+  async function handleCompileAndRun(e: React.FormEvent) {
+    e.preventDefault();
+
     setContractAddress("");
     setResponse("");
 
@@ -86,7 +98,16 @@ export default function Home(): JSX.Element {
     try {
       setCompiling(true);
       bytecode = (await compileContract()).bytecode;
-    } catch (err) {
+    } catch (errs) {
+      if (errs.length) {
+        setResponse(
+          errs
+            .map((err) => {
+              return err.formattedMessage;
+            })
+            .join("\n")
+        );
+      }
       console.log(err);
       return;
     } finally {
@@ -130,7 +151,7 @@ export default function Home(): JSX.Element {
         to: createdAddress,
         caller: senderAddress,
         origin: senderAddress,
-        data: Buffer.from(`GET /${path} HTTP/1.1`),
+        data: Buffer.from(`GET /${requestPath} HTTP/1.1`),
       });
 
       setResponse(callResult.execResult.returnValue.toString("utf-8"));
@@ -162,10 +183,14 @@ export default function Home(): JSX.Element {
           style={{ scrollMarginTop: "50px" }}
           id="try-it"
         >
-          <h2 className="text-2xl">Try it</h2>
+          <h2 className="text-2xl">Try It</h2>
+          <p>
+            Write a fallback()-based web app and run it in your browser (Web
+            Workers API support required).
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <form className="grid grid-cols-2 gap-4" onSubmit={handleCompileAndRun}>
           <div className="col-auto">
             <div className="grid gap-4 grid-cols-1 mb-8">
               <div className="col-auto">
@@ -175,9 +200,12 @@ export default function Home(): JSX.Element {
                 </label>
                 <input
                   value={path}
-                  onChange={(e) => setPath(e.target.value)}
+                  onChange={(e) => {
+                    setPath(e.target.value);
+                    setRequestPath(e.target.value);
+                  }}
                   placeholder="path"
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline"
+                  className="shadow appearance-none border-[1px] dark:border-none rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline text-lg"
                 />
                 <small>The path to write a handler for</small>
               </div>
@@ -189,7 +217,8 @@ export default function Home(): JSX.Element {
                   value={routeFunctionName}
                   onChange={(e) => setRouteFunctionName(e.target.value)}
                   placeholder="routeFunctionName"
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline"
+                  className="shadow appearance-none border-[1px] dark:border-none rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline text-lg"
+                  required
                 />
                 <small>
                   The name of the route handler function in the web app contract
@@ -197,13 +226,45 @@ export default function Home(): JSX.Element {
               </div>
               <div className="col-auto">
                 <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                  3. Write your response content
+                  3. Choose a response type
+                </label>
+                <select
+                  value={responseType}
+                  onChange={(e) => {
+                    const newResponseType = e.target.value;
+                    setResponseType(newResponseType);
+
+                    if (newResponseType !== responseType) {
+                      if (newResponseType == "json") {
+                        setResponseContent(JSON.stringify({ hello: "world" }));
+                      } else if (newResponseType == "text") {
+                        setResponseContent("Hello world!");
+                      } else if (newResponseType == "html") {
+                        setResponseContent("<h1>Hello world!</h1>");
+                      } else if (newResponseType == "redirect") {
+                        setResponseContent(
+                          "https://github.com/nathanhleung/fallback"
+                        );
+                      }
+                    }
+                  }}
+                  className="dark:bg-[rgb(59,59,59)] dark:border-none focus:outline-none active:outline-none rounded"
+                >
+                  <option value="text">Text</option>
+                  <option value="json">JSON</option>
+                  <option value="html">HTML</option>
+                  <option value="redirect">Redirect</option>
+                </select>
+              </div>
+              <div className="col-auto">
+                <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                  4. Write your response content
                 </label>
                 <input
                   value={responseContent}
                   onChange={(e) => setResponseContent(e.target.value)}
                   placeholder="responseContent"
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline"
+                  className="shadow appearance-none border-[1px] dark:border-none rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline text-lg"
                 />
                 <small>The content of the HTTP response</small>
               </div>
@@ -227,9 +288,7 @@ contract MyApp is WebApp {
         pure${routeFunctionName === "getIndex" ? "\n        override" : ""}
         returns (HttpMessages.Response memory)
     {
-        HttpMessages.Response memory response;
-        response.content = "${responseContent}";
-        return response;
+        return ${responseType}('${responseContent}');
     }
 }`}
             </CodeBlock>
@@ -237,10 +296,9 @@ contract MyApp is WebApp {
           <div className="col-auto">
             <h3>3. Compile and send request</h3>
             <CodeBlock language="javascript" title="request.js">
-              {`
-${contractAddress ? `const CONTRACT_ADDRESS = "${contractAddress}";` : ""}
+              {`const CONTRACT_ADDRESS = "${contractAddress}";
 
-const request = "GET /${path} HTTP/1.1";
+const request = "GET /${requestPath} HTTP/1.1";
 const result = await web3.eth.call({
   to: CONTRACT_ADDRESS,
   data: Buffer.from(request).toString("hex");
@@ -248,19 +306,32 @@ const result = await web3.eth.call({
 console.log(Buffer.from(result, "hex").toString());
         `.trim()}
             </CodeBlock>
+            <div className="my-6">
+              <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                Request Path
+              </label>
+              <input
+                value={requestPath}
+                onChange={(e) => setRequestPath(e.target.value)}
+                placeholder="path"
+                className="shadow appearance-none border-[1px] dark:border-none rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline text-lg"
+              />
+            </div>
             <button
+              type="submit"
               className="button button--secondary  button--lg"
-              onClick={handleCompileAndRun}
               disabled={compiling || deploying}
             >
               {compiling
                 ? "Compiling..."
                 : deploying
                 ? "Deploying..."
-                : "Compile and Run Locally"}
+                : "Compile and Run In-Browser"}
             </button>
             <small className="mt-2 block">
-              {compiling ? "Compilation may take a moment, please wait..." : ""}
+              {compiling
+                ? "Compilation may take a moment, please wait..."
+                : "Your browser must support the Web Workers API"}
             </small>
           </div>
           <div className="col-auto">
@@ -275,19 +346,19 @@ console.log(Buffer.from(result, "hex").toString());
             {response && (
               <>
                 <p>
-                  Now that you've tried it, you can write your own fallback()
-                  app too!
+                  Now that you've tried it, write your own fallback() app by
+                  following the <Link to="/docs/quickstart">Quick Start</Link>.
                 </p>
                 <Link
                   className="button button--primary button--lg"
                   to="/docs/quickstart"
                 >
-                  Go to Quickstart
+                  Go to Quick Start
                 </Link>
               </>
             )}
           </div>
-        </div>
+        </form>
       </main>
     </Layout>
   );

@@ -14,10 +14,14 @@ The GitHub imports in the code samples below will work on [Remix](https://remix.
 
 ```solidity title="MyApp.sol"
 import {WebApp} from "https://github.com/nathanhleung/fallback/blob/main/src/WebApp.sol";
+// If you're using Foundry, you might need to import `WebApp` with
+// import {WebApp} from "lib/fallback/src/WebApp.sol";
 
 contract MyApp is WebApp {
     constructor() {
     }
+
+    // You'll write your fallback() app's routes here!
 }
 ```
 
@@ -36,7 +40,9 @@ import {WebApp} from "https://github.com/nathanhleung/fallback/blob/main/src/Web
 contract MyApp is WebApp {
     constructor() {
         // highlight-start
+        // A `GET` request to `/` will be handled by the `getIndex` function
         routes[HttpConstants.Method.GET]["/"] = "getIndex";
+        // A `GET` request to `/github` will be handled by the `getGithub` function
         routes[HttpConstants.Method.GET]["/github"] = "getGithub";
         // highlight-end
     }
@@ -47,9 +53,18 @@ contract MyApp is WebApp {
 
 Create functions in the `MyApp` contract to handle your routes. Make sure the function signature of each route handler is `functionName(HttpMessages.Request)` or `functionName()` (if your route handler doesn't need access to the `Request` struct).
 
-Your route handler function can have almost any name (as long as it doesn't overlap with one of `WebApp`'s response helpers; more on this below).
+Your route handler function can have pretty much any name (as long as it doesn't overlap with one of `WebApp`'s response helper functions like `json` or `html`; more on this below).
 
-Always make sure your route handler function has a valid function signature and the route handler function's name is typed correctly in the `routes` mapping.
+Always make sure your route handler function has the correct function signature and the route handler function's name is typed correctly in the `routes` mapping.
+
+```solidity
+// Any typo will not work!
+routes[HttpConstants.Method.GET]["/"] = "getInndex";
+
+// This will not work! Try putting `extraData` into a request header
+// or request content instead.
+function getIndex(HttpMessages.Request calldata request, bool extraData)
+```
 
 > Internally, fallback() will parse incoming HTTP requests and use the `routes` mapping to determine which contract function to call. It will call the function using its [function selector](https://solidity-by-example.org/function-selector/), which depends on the function's parameters.
 >
@@ -88,7 +103,7 @@ The full list of available `WebApp` response helpers (e.g. `text`, `json`, `redi
 
 > The response helpers build `HttpMessages.Response` instances with specific headers (e.g. the `json` response helper function builds a `Response` with a `Content-Type: application/json` header).
 >
-> The response helpers are defined on `WebApp`, so you cannot create route handler functions with names matching any of the response helpers; the Solidity compiler will output an error (since the functions are not marked `virtual`).
+> These response helpers are defined on `WebApp`, so you cannot create route handler functions with names matching any of the response helpers; the Solidity compiler will output an error (since the response helper functions are not marked `virtual`).
 
 ```solidity title="MyApp.sol" showLineNumbers
 // highlight-start
@@ -109,6 +124,10 @@ contract MyApp is WebApp {
 
     // highlight-start
     function getIndex(HttpMessages.Request calldata request) external pure override returns (HttpMessages.Response memory) {
+        // The `H` API is heavily based on
+        // https://github.com/hyperhype/hyperscript
+        // Use `H.element` (if standard HTML tag) or H.h("element")
+        // to generate an `<element>`.
         string memory htmlString = H.html5(
             H.body(
                 StringConcat.concat(
@@ -133,7 +152,7 @@ contract MyApp is WebApp {
 
 Once you've implemented your route handlers, create a new contract `MyServer` which extends `DefaultServer`. Pass an instance of `MyApp` to `DefaultServer`'s constructor.
 
-> `DefaultServer` extends the `HttpServer` contract and automatically sets a few reasonable request parsing defaults (e.g. it sets `maximumRequestHeaders` to `4000` and `maxPathLength` to `4000` too). These defaults are generally [based on Apache's defaults](https://stackoverflow.com/questions/1289585/what-is-apaches-maximum-url-length).
+> `DefaultServer` extends the `HttpServer` contract and automatically sets a few reasonable request parsing defaults (e.g. it sets `maximumRequestHeaders` to `4000` and `maxPathLength` to `4000`). These defaults are generally [based on Apache's defaults](https://stackoverflow.com/questions/1289585/what-is-apaches-maximum-url-length).
 >
 > If you want to customize request parsing behavior, you can construct your own instance of `HttpServer` separately, but the `DefaultServer` should suffice for most use-cases.
 
@@ -160,7 +179,9 @@ forge create MyServer.sol:MyServer
 
 ## 7. Send HTTP requests to the contract
 
-When you send HTTP requests to the `MyServer` contract (hex-encoded into the `data` field of a transaction), the return value will be a hex-encoded HTTP response.
+When you send HTTP requests to the `MyServer` contract (hex-encode the requests into the `data` field of a transaction), the return value will be a hex-encoded HTTP response.
+
+The sample below shows how to send a request to the contract using native Node.js modules.
 
 ```javascript title="request.js" showLineNumbers
 const http = require("http");
@@ -174,7 +195,7 @@ const jsonRpcData = JSON.stringify({
     {
       to: CONTRACT_ADDRESS,
       // HTTP request to send to contract
-      data: "GET / HTTP/1.1\\r\\nHost: 127.0.0.1".toString("hex"),
+      data: "GET / HTTP/1.1".toString("hex"),
     },
   ],
 });
@@ -211,9 +232,9 @@ httpRequest.end();
 
 ## 8. Exposing your fallback() app to the web
 
-To expose fallback() to the web, you'll need to create a TCP server that can pass messages to and from the Ethereum blockchain.
+To expose your fallback() app to the web, you'll need to create a TCP server that can pass messages to and from the deployed contract on the blockchain.
 
-Here's a Node.js example, using only native modules. It exposes a fallback() web app on port 8080.
+Here's a Node.js example, using only native modules, which exposes a fallback() web app on port 8080.
 
 ```javascript title="server.js" showLineNumbers
 const http = require("http");
@@ -292,3 +313,45 @@ async function handleRequest(requestData) {
 To put this into production, you could run this script on an AWS EC2 instance and [use NGINX to forward requests from port 80 to 8080](https://www.digitalocean.com/community/tutorials/how-to-set-up-a-node-js-application-for-production-on-ubuntu-20-04).
 
 You could also add HTTPS support by [configuring NGINX with Let's Encrypt](https://www.digitalocean.com/community/tutorials/how-to-secure-nginx-with-let-s-encrypt-on-ubuntu-20-04).
+
+## 9. Next steps
+
+You can write any sort of web app with fallback().
+
+For more fallback() web app examples, with more advanced route handlers, see [`src/example/SimpleExample.sol`](https://github.com/nathanhleung/fallback/blob/main/src/example/FullExample.sol) and [`src/example/FullExample.sol`](https://github.com/nathanhleung/fallback/blob/main/src/example/FullExample.sol).
+
+Here's an excerpt based on one of the example apps showing how to handle a `POST` request:
+
+```solidity title="ExamplePostApp.sol" showLineNumbers
+contract ExamplePostApp is WebApp {
+    constructor() {
+        // Call different handlers based on HTTP method
+        routes[HttpConstants.Method.GET]["/form"] = "getForm";
+        routes[HttpConstants.Method.POST]["/form"] = "postForm";
+    }
+
+    // Show cURL `POST` command if `GET` request
+    function getForm() external pure returns (HttpMessages.Response memory) {
+        HttpMessages.Response memory response;
+        response
+            .content = "curl -v -d 'random post data' -X POST http://localhost:8000/form";
+        return response;
+    }
+
+    // Send `POST`ed data back
+    function postForm(HttpMessages.Request calldata request)
+        external
+        pure
+        returns (HttpMessages.Response memory)
+    {
+        HttpMessages.Response memory response;
+        response.content = StringConcat.concat(
+            "Received posted data: ",
+            string(request.content)
+        );
+        return response;
+    }
+}
+```
+
+For a working Node.js TCP server example, see [`server.js`](https://github.com/nathanhleung/fallback/blob/main/server.js) in the repository root.
