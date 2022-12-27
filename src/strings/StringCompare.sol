@@ -109,12 +109,17 @@ library StringCompare {
 
     /**
      * @dev Tests whether a string contains only alphanumeric
-     *     characters. Based on
+     *     characters and/or spaces. Based on
      *     https://ethereum.stackexchange.com/questions/50369/string-validation-solidity-alpha-numeric-and-length
      * @param str The string to check
-     * @return Whether the string is alphanumeric
+     * @return Whether the string contains only alphanumeric
+     *     characters and/or spaces.
      */
-    function isAlphanumeric(string memory str) internal pure returns (bool) {
+    function isAlphanumericOrSpaces(string memory str)
+        internal
+        pure
+        returns (bool)
+    {
         bytes memory b = bytes(str);
         for (uint256 i; i < b.length; i++) {
             bytes1 char = b[i];
@@ -122,7 +127,8 @@ library StringCompare {
             if (
                 !(char >= 0x30 && char <= 0x39) && // 0-9
                 !(char >= 0x41 && char <= 0x5A) && // A-Z
-                !(char >= 0x61 && char <= 0x7A) // a-z
+                !(char >= 0x61 && char <= 0x7A) && // a-z
+                !(char == 0x20) // space
             ) {
                 return false;
             }

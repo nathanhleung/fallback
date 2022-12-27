@@ -16,6 +16,8 @@ contract HttpProxy {
     using StringConcat for string;
     using Strings for uint256;
 
+    event Response(bytes responseBytes);
+
     /**
      * Set in constructor of `HttpServer`.
      */
@@ -89,6 +91,7 @@ contract HttpProxy {
             messages.buildResponse(response);
         }
 
+        bytes32 responseTopic = bytes32(keccak256("Response(bytes)"));
         assembly {
             // https://ethereum.stackexchange.com/questions/131771/when-writing-assembly-to-which-memory-address-should-i-start-writing
             let freeMemoryPointer := mload(0x40)
@@ -116,6 +119,9 @@ contract HttpProxy {
                 returndatasize(),
                 responseBytesOffset
             )
+
+            // Emit event
+            log1(responseBytesPointer, responseBytesLength, responseTopic)
 
             // Don't return the ABI-encoded bytes array, just return
             // the actual bytes data itself

@@ -183,7 +183,7 @@ forge create MyServer.sol:MyServer
 
 When you send HTTP requests to the `MyServer` contract (hex-encode the requests into the `data` field of a transaction), the return value will be a hex-encoded HTTP response.
 
-The sample below shows how to send a request to the contract using native Node.js modules.
+The sample below shows how to send a request to the contract using native Node.js modules (it uses `eth_call` internally, so it doesn't make any changes to blockchain state).
 
 ```javascript title="request.js" showLineNumbers
 const http = require("http");
@@ -232,11 +232,13 @@ httpRequest.write(jsonRpcData);
 httpRequest.end();
 ```
 
-## 8. Exposing your fallback() app to the web
+See [`send-server.js`](https://github.com/nathanhleung/fallback/blob/main/src/example/send-server.js) for an example of how to write a server that modifies blockchain state using `eth_sendTransaction`. Instead of getting the data returned from the call and sending it back as the HTTP response, you need to extract the data from the `Response` event (defined in [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol)) after the transaction is included in a block.
+
+## 8. Expose your fallback() app to the web
 
 To expose your fallback() app to the web, you'll need to create a TCP server that can pass messages to and from the deployed contract on the blockchain.
 
-Here's a Node.js example, using only native modules, which exposes a fallback() web app on port 8080.
+Here's a Node.js example, using only native modules, which exposes a fallback() web app on port 8000.
 
 ```javascript title="server.js" showLineNumbers
 const http = require("http");
@@ -312,9 +314,11 @@ async function handleRequest(requestData) {
 }
 ```
 
-To put this into production, you could run this script on an AWS EC2 instance and [use NGINX to forward requests from port 80 to 8080](https://www.digitalocean.com/community/tutorials/how-to-set-up-a-node-js-application-for-production-on-ubuntu-20-04).
+To put this into production, you could run this script on an AWS EC2 instance and [use NGINX as a reverse proxy to forward requests from port 80 to 8000](https://www.digitalocean.com/community/tutorials/how-to-set-up-a-node-js-application-for-production-on-ubuntu-20-04).
 
 You could also add HTTPS support by [configuring NGINX with Let's Encrypt](https://www.digitalocean.com/community/tutorials/how-to-secure-nginx-with-let-s-encrypt-on-ubuntu-20-04).
+
+Another alternative is HAProxy, which [supports proxying over both TCP and HTTP](https://www.haproxy.com/blog/layer-4-and-layer-7-proxy-mode/). You could use [HAProxy's connection limiting, queueing](https://www.haproxy.com/blog/protect-servers-with-haproxy-connection-limits-and-queues/), and [rate-limiting features](https://www.haproxy.com/blog/four-examples-of-haproxy-rate-limiting/) to control the load on your blockchain RPCs.
 
 ## 9. Next steps
 
@@ -357,3 +361,5 @@ contract ExamplePostApp is WebApp {
 ```
 
 For a working Node.js TCP server example, see [`call-server.js`](https://github.com/nathanhleung/fallback/blob/main/src/example/call-server.js) in the `src/example` directory.
+
+Finally, see [`src/example/Todo.sol`](https://github.com/nathanhleung/fallback/blob/main/src/example/Todo.sol) for a working todo app. If run with the [`send-server.js`](https://github.com/nathanhleung/fallback/blob/main/src/example/send-server.js) server, this app demonstrates reading and writing state to the blockchain over HTTP.

@@ -36,11 +36,11 @@ contract TodoApp is WebApp {
     }
 
     function jsonTodos() private view returns (HttpMessages.Response memory) {
-        string memory todosString = "[";
+        string[] memory todoObjects = new string[](todos.length);
         for (uint256 i = 0; i < todos.length; i += 1) {
             Todo storage todo = todos[i];
-            todosString = todosString.concat(
-                "{",
+            todoObjects[i] = StringConcat.concat(
+                "{"
                 '"id":',
                 todo.id.toString(),
                 ","
@@ -52,7 +52,11 @@ contract TodoApp is WebApp {
                 '"}'
             );
         }
-        todosString = todosString.concat("]");
+        string memory todosString = StringConcat.concat(
+            "[",
+            StringConcat.join(todoObjects),
+            "]"
+        );
         return json(todosString);
     }
 
@@ -62,13 +66,14 @@ contract TodoApp is WebApp {
         override
         returns (HttpMessages.Response memory)
     {
+        request;
         return
             html(
                 H.html5(
                     StringConcat.concat(
                         H.head(
                             StringConcat.concat(
-                                H.title("fallback todos"),
+                                H.title("fallback() todos"),
                                 H.link(
                                     'rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous"'
                                 ),
@@ -82,15 +87,62 @@ contract TodoApp is WebApp {
                             H.main(
                                 "class='mx-auto py-5' style='max-width: 500px'",
                                 StringConcat.concat(
-                                    H.h1("fallback() Todo App"),
-                                    H.a(
-                                        "href='https://github.com/nathanhleung/fallback'",
-                                        "GitHub"
+                                    H.h1("fallback() Demo Todo App"),
+                                    H.p(
+                                        StringConcat.concat(
+                                            "Write web apps in Solidity &mdash; ",
+                                            H.b("fallback()"),
+                                            " is a Solidity web framework / a proof-of-concept implementation of HTTP over Ethereum."
+                                        )
+                                    ),
+                                    H.p(
+                                        StringConcat.concat(
+                                            H.a(
+                                                "href='https://github.com/nathanhleung/fallback'",
+                                                "GitHub"
+                                            ),
+                                            H.span("&nbsp;&middot;&nbsp;"),
+                                            H.a(
+                                                "href='https://fallback.natecation.xyz'",
+                                                "Docs"
+                                            )
+                                        )
+                                    ),
+                                    H.div(
+                                        "class='py-4'",
+                                        StringConcat.concat(
+                                            H.small(
+                                                "class='d-block'",
+                                                StringConcat.concat(
+                                                    "This todo app's contract is deployed at ",
+                                                    H.b(
+                                                        uint256(
+                                                            uint160(
+                                                                address(this)
+                                                            )
+                                                        ).toHexString(20)
+                                                    ),
+                                                    "."
+                                                )
+                                            ),
+                                            H.small(
+                                                "class='d-block mt-3'",
+                                                StringConcat.concat(
+                                                    "Transactions are being sent from ",
+                                                    H.b(
+                                                        uint256(
+                                                            uint160(msg.sender)
+                                                        ).toHexString(20)
+                                                    ),
+                                                    "."
+                                                )
+                                            )
+                                        )
                                     ),
                                     H.form(
-                                        "class='py-5'",
+                                        "class='py-4'",
                                         StringConcat.concat(
-                                            H.h4("Create New"),
+                                            H.h4("Create New Todo"),
                                             H.label(
                                                 "What do you want to get done?"
                                             ),
@@ -99,23 +151,41 @@ contract TodoApp is WebApp {
                                                 "class='my-2'",
                                                 StringConcat.concat(
                                                     H.input(
-                                                        "type='text' class='form-control' name='new-todo' required pattern='[a-zA-Z0-9]+' placeholder='Learn Solidity'"
+                                                        "type='text' class='form-control' name='new-todo' required pattern='[a-zA-Z0-9 ]+' placeholder='Learn Solidity'"
                                                     ),
                                                     H.small(
-                                                        "Alphanumeric only, please"
+                                                        "class='d-block mt-1'",
+                                                        "Alphanumeric or spaces only, please."
                                                     )
                                                 )
                                             ),
                                             H.button(
-                                                "class='my-2 btn btn-primary' type='submit'",
-                                                "Submit"
+                                                "class='mt-2 btn btn-lg btn-primary' type='submit'",
+                                                "Create Todo"
+                                            ),
+                                            H.br(),
+                                            H.small(
+                                                "class='d-block mt-1 text-muted'",
+                                                "Request errors will be logged to the console."
                                             )
                                         )
                                     ),
                                     H.div(
                                         "class='py-5'",
                                         StringConcat.concat(
-                                            H.h4("Todos"),
+                                            H.div(
+                                                "class='d-flex align-items-center mb-2 me-2'",
+                                                StringConcat.concat(
+                                                    H.h4(
+                                                        "class='mb-0 me-4'",
+                                                        "My Todos"
+                                                    ),
+                                                    H.button(
+                                                        "onclick='toggleHideCompleted()' id='toggle-hide-completed' class='btn btn-sm btn-secondary'",
+                                                        "Hide Completed"
+                                                    )
+                                                )
+                                            ),
                                             H.ul(
                                                 "id='todos' class='list-group'",
                                                 "(todos loading...)"
@@ -123,43 +193,97 @@ contract TodoApp is WebApp {
                                         )
                                     ),
                                     H.script(
+                                        "let hideCompleted = false;"
+                                        "let cachedTodos = [];"
+                                        ""
+                                        "function fetchAndDisplayTodos(useCached = false) {"
+                                        "  if (useCached && cachedTodos.length > 0) {"
+                                        "    displayTodos(cachedTodos);"
+                                        "    return;"
+                                        "  }"
+                                        ""
+                                        "  fetch('/todos')"
+                                        "    .then(res => res.json())"
+                                        "    .then(json => {"
+                                        "      cachedTodos = json;"
+                                        "      return json;"
+                                        "    })"
+                                        "    .then(displayTodos);"
+                                        "}"
+                                        ""
                                         "document.addEventListener('DOMContentLoaded', (e) => {"
-                                        "  function displayTodos(todosJson) {"
-                                        "    const todosElement = document.getElementById('todos');"
-                                        "    todosElement.innerHTML = todosJson.map(todo =>"
-                                        "      `<li class='list-group-item d-flex justify-content-between align-items-center'>"
+                                        "  fetchAndDisplayTodos();"
+                                        ""
+                                        "  const form = document.querySelector('form');"
+                                        "  form.addEventListener('submit', (e) => {"
+                                        "    e.preventDefault();"
+                                        "    const input = e.target[0];"
+                                        "    const newTodo = input.value;"
+                                        "    const button = e.target[1];"
+                                        "    button.disabled = true;"
+                                        "    button.innerText = 'Creating...';"
+                                        ""
+                                        "    fetch('/new-todo', {"
+                                        "      method: 'POST',"
+                                        "      body: newTodo,"
+                                        "    }).then(res => res.json())"
+                                        "      .then(json => {"
+                                        "        cachedTodos = json;"
+                                        "        return json;"
+                                        "      })"
+                                        "      .then(displayTodos)"
+                                        "      .catch(console.error)"
+                                        "      .finally(() => {"
+                                        "        input.value = '';"
+                                        "        button.disabled = false;"
+                                        "        button.innerText = 'Create Todo';"
+                                        "      });"
+                                        "  });"
+                                        "});"
+                                        ""
+                                        "function displayTodos(todosJson) {"
+                                        "  const todosElement = document.getElementById('todos');"
+                                        "  if (!todosElement) return;"
+                                        ""
+                                        "  todosElement.innerHTML = todosJson"
+                                        "    .filter(todo => hideCompleted ? !todo.completed : true)"
+                                        "    .map(todo =>"
+                                        "      `<li id='todo-${todo.id}' class='list-group-item d-flex justify-content-between align-items-center'>"
                                         "        <span>"
                                         "          ${DOMPurify.sanitize(todo.content)}"
                                         "        </span>"
                                         "        ${todo.completed"
                                         "          ? `<span class='badge bg-success rounded-pill'>Completed</span>`"
-                                        "          : `<a onclick='completeTodo(${todo.id})' href='#'>Mark Complete</a>`}"
+                                        "          : `<a class='btn btn-sm btn-link p-0' onclick='completeTodo(${todo.id})'>Mark Complete</a>`}"
                                         "      </li>`"
-                                        "    ).join('') || '(no todos yet)';"
-                                        "  }"
-                                        ""
-                                        "  fetch('/todos')"
-                                        "    .then(res => res.json())"
-                                        "    .then(displayTodos);"
-                                        ""
-                                        "  const form = document.querySelector('form');"
-                                        "  form.addEventListener('submit', (e) => {"
-                                        "    e.preventDefault();"
-                                        "    const newTodo = e.target[0].value;"
-                                        "    fetch('/new-todo', {"
-                                        "      method: 'POST',"
-                                        "      headers: {"
-                                        "        'Content-Type': 'text/plain',"
-                                        "      },"
-                                        "      body: newTodo,"
-                                        "    }).then(res => res.json())"
-                                        "      .then(displayTodos)"
-                                        "      .catch(console.error);"
-                                        "  });"
-                                        "});"
+                                        "    ).join('') || '(no todos)';"
+                                        "}"
                                         ""
                                         "function completeTodo(id) {"
-                                        "  console.log(id);"
+                                        "  const markCompletedLink = document.querySelector(`#todo-${id} a`);"
+                                        "  markCompletedLink.classList.add('disabled');"
+                                        "  markCompletedLink.innerText = 'Completing...';"
+                                        "  fetch('/completed-todo', {"
+                                        "    method: 'POST',"
+                                        "    body: id,"
+                                        "  }).then(res => res.json())"
+                                        "    .then(json => {"
+                                        "      cachedTodos = json;"
+                                        "      return json;"
+                                        "    })"
+                                        "    .then(displayTodos)"
+                                        "    .catch(console.error)"
+                                        "    .finally(() => {"
+                                        "      markCompletedLink.classList.remove('disabled');"
+                                        "      markCompletedLink.innerText = 'Mark Complete';"
+                                        "    });"
+                                        "}"
+                                        ""
+                                        "function toggleHideCompleted() {"
+                                        "  const button = document.getElementById('toggle-hide-completed');"
+                                        "  hideCompleted = !hideCompleted;"
+                                        "  button.innerText = hideCompleted ? 'Show Completed' : 'Hide Completed';"
+                                        "  fetchAndDisplayTodos(true);"
                                         "}"
                                     )
                                 )
@@ -170,11 +294,7 @@ contract TodoApp is WebApp {
             );
     }
 
-    function getTodos(HttpMessages.Request calldata request)
-        external
-        view
-        returns (HttpMessages.Response memory)
-    {
+    function getTodos() external view returns (HttpMessages.Response memory) {
         return jsonTodos();
     }
 
@@ -184,7 +304,7 @@ contract TodoApp is WebApp {
     {
         string memory contentString = string(request.content);
 
-        if (!contentString.isAlphanumeric()) {
+        if (!contentString.isAlphanumericOrSpaces()) {
             return
                 handleBadRequest(request, "Todo content must be alphanumeric.");
         }

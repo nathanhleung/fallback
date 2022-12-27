@@ -33,8 +33,12 @@ function HomepageHeader() {
             Get Started
           </Link>
         </div>
-        <div className="mt-4">
-          <Link to="/docs/how-it-works">How it Works</Link>
+        <div className="mt-12 max-w-sm mx-auto">
+          <p>
+            <b>fallback()</b> is a Solidity web framework / a proof-of-concept
+            implementation of HTTP over Ethereum. For more, see{" "}
+            <Link to="/docs/how-it-works">How it Works</Link>.
+          </p>
         </div>
       </div>
     </header>
@@ -166,7 +170,7 @@ export default function Home(): JSX.Element {
   return (
     <Layout
       title={`fallback() Solidity Web Framework`}
-      description="Description will go into a meta tag in <head />"
+      description="Write web apps in Solidity — fallback() is a Solidity web framework / a proof-of-concept implementation of HTTP over Ethereum."
     >
       <Head>
         <script

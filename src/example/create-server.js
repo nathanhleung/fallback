@@ -6,8 +6,9 @@ const ETHEREUM_RPC_PORT = process.env.ETHEREUM_RPC_PORT || 8545;
 
 /**
  * Sends a JSON-RPC request to the Ethereum RPC.
- * @param {*} jsonRpcData The JSON-RPC request
- * @returns The JSON-RPC response
+ * @param {*} jsonRpcData The JSON-RPC request (an object
+ *     which will be `JSON.stringify`'d)
+ * @returns The JSON-RPC response, `JSON.parse`d.
  */
 function sendJsonRpcRequest(jsonRpcData) {
   return new Promise((resolve) => {
@@ -24,10 +25,10 @@ function sendJsonRpcRequest(jsonRpcData) {
       (response) => {
         let responseData = "";
         response.on("data", (chunk) => (responseData += chunk));
-        response.on("end", () => resolve(responseData));
+        response.on("end", () => resolve(JSON.parse(responseData)));
       }
     );
-    httpRequest.write(jsonRpcData);
+    httpRequest.write(JSON.stringify(jsonRpcData));
     httpRequest.end();
   });
 }
