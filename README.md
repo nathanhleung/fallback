@@ -18,6 +18,8 @@ See the [fallback() docs]() for more information:
   - `example/`: Example fallback() web apps
     - `SimpleExample.sol`: Simple example app
     - `FullExample.sol`: Example app with prettier HTML responses
+    - `call-server.js`: Example TCP-to-blockchain fallback() server implementation that uses `eth_call`
+    - `send-server.js`: Example TCP-to-blockchain fallback() server implementation that uses `eth_sendTransaction`
   - `html-dsl/`: Solidity HTML DSL contracts
     - `generate-dsl.js`: Script which generates a Solidity DSL function for each valid HTML element
     - `H.sol`: Public API of Solidity HTML DSL
@@ -27,7 +29,6 @@ See the [fallback() docs]() for more information:
   - `HttpServer.sol`: Extend the `HttpServer` or `DefaultServer` contracts with a `WebApp` to create a Solidity HTTP server
   - `WebApp.sol`: Extend this contract to define routes in a custom web app
 - `www/`: Docusaurus docs website
-- `server.js`: Example TCP-to-blockchain fallback() server implementation
 
 ## Testing
 
@@ -49,7 +50,7 @@ To test that the contracts work when deployed, run `anvil` to start a local test
 
 Deploy the example web app server with `forge create --rpc-url http://127.0.0.1:8545 --private-key $PRIVATE_KEY src/example/Example.sol:ExampleServer` and grab the contract address.
 
-Then run `CONTRACT_ADDRESS=$CONTRACT_ADDRESS node server.js`.
+Then run `CONTRACT_ADDRESS=$CONTRACT_ADDRESS node src/example/server.js`.
 
 A TCP server will be started at http://localhost:8000 that will forward HTTP requests to the local deployment of the contract.
 

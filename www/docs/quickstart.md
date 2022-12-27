@@ -126,6 +126,8 @@ contract MyApp is WebApp {
     function getIndex(HttpMessages.Request calldata request) external pure override returns (HttpMessages.Response memory) {
         // The `H` API is heavily based on
         // https://github.com/hyperhype/hyperscript
+        // and Jade/Pug
+        // https://github.com/pugjs/pug
         // Use `H.element` (if standard HTML tag) or H.h("element")
         // to generate an `<element>`.
         string memory htmlString = H.html5(
@@ -243,7 +245,7 @@ const net = require("net");
 const ETHEREUM_RPC_HOST = process.env.ETHEREUM_RPC_HOST || "127.0.0.1";
 const ETHEREUM_RPC_PORT = process.env.ETHEREUM_RPC_PORT || 8545;
 
-// MyApp contract address
+// MyServer contract address
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
 
 const server = net.createServer((socket) => {
@@ -354,4 +356,4 @@ contract ExamplePostApp is WebApp {
 }
 ```
 
-For a working Node.js TCP server example, see [`server.js`](https://github.com/nathanhleung/fallback/blob/main/server.js) in the repository root.
+For a working Node.js TCP server example, see [`call-server.js`](https://github.com/nathanhleung/fallback/blob/main/src/example/call-server.js) in the `src/example` directory.

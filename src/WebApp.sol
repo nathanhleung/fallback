@@ -156,9 +156,7 @@ abstract contract WebApp is Ownable {
     }
 
     /**
-     * @dev Default 404 Not Found handler. `public` rather than `external`
-     *     since it's called by the `fallback` function here if a nonexistent
-     *     route handler is called.
+     * @dev Default 404 Not Found handler.
      * @return a default 404 Not Found response
      */
     function handleNotFound(
@@ -175,7 +173,7 @@ abstract contract WebApp is Ownable {
     function handleBadRequest(
         HttpMessages.Request calldata request,
         string memory errorMessage
-    ) external virtual returns (HttpMessages.Response memory) {
+    ) public virtual returns (HttpMessages.Response memory) {
         return handleStatusCode(request, 400, errorMessage);
     }
 
@@ -186,7 +184,7 @@ abstract contract WebApp is Ownable {
     function handleError(
         HttpMessages.Request calldata request,
         string memory errorMessage
-    ) external virtual returns (HttpMessages.Response memory) {
+    ) public virtual returns (HttpMessages.Response memory) {
         return handleStatusCode(request, 500, errorMessage);
     }
 

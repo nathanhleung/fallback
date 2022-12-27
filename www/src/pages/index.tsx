@@ -185,8 +185,8 @@ export default function Home(): JSX.Element {
         >
           <h2 className="text-2xl">Try It</h2>
           <p>
-            Write a fallback()-based web app and run it in your browser (Web
-            Workers API support required).
+            Write a fallback()-based web app and run it in your browser (support
+            for Web Workers API required).
           </p>
         </div>
 
