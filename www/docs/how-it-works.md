@@ -167,14 +167,23 @@ contract HttpProxy {
 
     fallback() external {
         bytes memory requestBytes = msg.data;
+
         // Parse request
         HttpMessages.Request memory request =
             messages.parseRequest(requestBytes);
+
         // Call route handler
         HttpMessages.Response memory response =
             handler.handleRoute(request);
+
         // Serialize `Response` struct into HTTP response bytes
-        return messages.buildResponse(response);
+        bytes memory responseBytes = messages.buildResponse(response);
+
+        // Emit event so callers can access response data in the
+        // transaction receipt, too.
+        emit Response(responseBytes);
+
+        return responseBytes;
 
         // (We're using `return` above for simplicity, but technically, you
         // can't `return` from`fallback` — the above is actually implemented in

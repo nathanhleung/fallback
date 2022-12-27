@@ -13,7 +13,7 @@ const config = {
   baseUrl: "/",
   onBrokenLinks: "throw",
   onBrokenMarkdownLinks: "warn",
-  favicon: "img/favicon.ico",
+  favicon: "img/logo-256.png",
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
@@ -84,7 +84,7 @@ const config = {
       navbar: {
         title: "fallback()",
         logo: {
-          alt: "My Site Logo",
+          alt: "fallback() Logo",
           src: "img/logo.svg",
         },
         items: [
@@ -111,6 +111,12 @@ const config = {
             position: "left",
             label: "Roadmap",
             activeBaseRegex: "roadmap",
+          },
+          {
+            to: "/docs/acknowledgments",
+            position: "left",
+            label: "Acknowledgments",
+            activeBaseRegex: "acknowledgments",
           },
           {
             href: "https://github.com/nathanhleung/fallback",
@@ -140,6 +146,10 @@ const config = {
               {
                 label: "Roadmap",
                 to: "/docs/roadmap",
+              },
+              {
+                label: "Acknowledgments",
+                to: "/docs/acknowledgments",
               },
               {
                 label: "GitHub",
