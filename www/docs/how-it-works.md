@@ -77,11 +77,11 @@ contract HttpServer is HttpProxy
 
 ## 4. [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) Part 1
 
-[`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) is a contract whose only `external` or `public` function is a [`fallback`](https://docs.soliditylang.org/en/v0.8.17/contracts.html#fallback-function) function.
+[`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) is a contract whose only `external` or `public` function is a [`fallback`](https://docs.soliditylang.org/en/v0.8.17/contracts.html#fallback-function) function (hence, the name of this project).
 
 When [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) receives a transaction with `data`, since there are no functions on the contract, the `fallback` function will be called instead.
 
-In its `fallback` function, [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) uses the [`HttpMessages`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpMessages.sol) contract to parse the calldata as if it were an HTTP request and passes the parsed request to [`HttpHandler`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpHandler.sol).
+In the `fallback` function, [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) uses the [`HttpMessages`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpMessages.sol) contract to parse the calldata as if it were an HTTP request and passes the parsed request to [`HttpHandler`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpHandler.sol).
 
 ```solidity title="HttpProxy.sol" showLineNumbers
 // Simplified version of `HttpProxy`
@@ -101,7 +101,13 @@ contract HttpProxy {
     }
 ```
 
-In our case, our parsed request would look like this:
+In our case, our original request
+
+```js
+const request = "GET /github HTTP/1.1";
+```
+
+would be parsed into something that look like this:
 
 ```solidity
 HttpMessages.Request {
@@ -127,9 +133,9 @@ contract MyApp is WebApp {
 }
 ```
 
-If there is a route configured, [`HttpHandler`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpHandler.sol) executes a low-level call on the instance of [`WebApp`](https://github.com/nathanhleung/fallback/blob/main/src/WebApp.sol) and forwards the response back to [`HttpServer`](https://github.com/nathanhleung/fallback/blob/main/src/httpServer.sol).
+If there is a route configured, [`HttpHandler`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpHandler.sol) executes a low-level call to the configured function on the instance of [`WebApp`](https://github.com/nathanhleung/fallback/blob/main/src/WebApp.sol) and forwards the response back to [`HttpServer`](https://github.com/nathanhleung/fallback/blob/main/src/httpServer.sol).
 
-In our case, [`HttpHandler`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpHandler.sol) will map our `GET /github` request to the `getGithub` function and call it.
+In our case, [`HttpHandler`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpHandler.sol) will map our `GET /github` request to the `getGithub` function on `MyApp` and call it.
 
 ```solidity title="MyApp.sol" showLineNumbers
 function getGithub() external pure returns (HttpMessages.Response memory) {
@@ -137,7 +143,7 @@ function getGithub() external pure returns (HttpMessages.Response memory) {
 }
 ```
 
-The return value from `handleRoute` will be a `HttpMessages.Response` struct that looks like this:
+The return value from `getGithub` will be passed to `handleRoute`. It will be an `HttpMessages.Response` struct that looks like this:
 
 ```solidity
 HttpMessages.Response {
@@ -149,7 +155,9 @@ HttpMessages.Response {
 
 ## 6. [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) Part 2
 
-We're now back in [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) with a response.
+`handleRoute` will return the response back to [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol).
+
+Finally, [`HttpMessages`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpMessages.sol) is used again to serialize the response into `bytes` and return it to the caller.
 
 ```solidity title="HttpProxy.sol" showLineNumbers
 // Simplified version of `HttpProxy`
@@ -174,8 +182,6 @@ contract HttpProxy {
     }
 ```
 
-Finally, we call [`HttpMessages`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpMessages.sol) again to serialize the response into `bytes` and return it to the caller.
-
 ## 7. Error Handling
 
 The code samples above are slightly simplified and don't show all the error handling code.
@@ -184,4 +190,4 @@ If there is no route configured, [`HttpHandler`](https://github.com/nathanhleung
 
 If an error occurs during request handling, a `400` (Bad Request) or `500` (Internal Server Error) error will be returned depending on where exactly the error occurred (generally, `400` if it's in `HttpProxy` and `500` if it's in `HttpHandler`).
 
-If `debug` mode is enabled on [`WebApp`](https://github.com/nathanhleung/fallback/blob/main/src/WebApp.sol), the error pages will show the full request and response data.
+If `debug` mode is enabled on [`WebApp`](https://github.com/nathanhleung/fallback/blob/main/src/WebApp.sol), the error pages will show the full request and response data. In `debug` mode, example error pages can be accessed at the paths `/__not_found` (404), `/__bad_request` (400), and `/__error` (500).

@@ -87,11 +87,13 @@ If `debug` mode is enabled on [`WebApp`](https://github.com/nathanhleung/fallbac
 - `handleError(HttpMessages.Request) returns (HttpMessages.Response)`
   - Override this function to customize the 500 page
 
+> In `debug` mode, example error pages can be accessed at the paths `/__not_found` (404), `/__bad_request` (400), and `/__error` (500).
+
 To return other HTTP error codes, set the `statusCode` member on the `HttpMessages.Response` struct and set the content manually.
 
 ## [`H`](https://github.com/nathanhleung/fallback/blob/main/src/html-dsl/H.sol) (`src/html-dsl/H.sol:H`)
 
-A Solidity HTML DSL. The basic building block of `H` is the function `H.h`, which has three variations:
+A Solidity HTML DSL, inspired by [HyperScript](https://github.com/hyperhype/hyperscript) and [Pug](https://github.com/pugjs/pug). The basic building block of `H` is the function `H.h`, which has three variations:
 
 - `h(string tagName) returns (string)`
   - Returns the tag without any children (e.g. `h("div") => "<div></div>"`)
@@ -100,7 +102,7 @@ A Solidity HTML DSL. The basic building block of `H` is the function `H.h`, whic
 - `h(string tagName, string attributes, string children) returns (string)`
   - Returns the tag with the given attributes and children
 
-The list of self-closing tags is taken from the HTML spec.
+The list of self-closing tags is taken from [the HTML spec](https://html.spec.whatwg.org/multipage/syntax.html#void-elements) and `H.h` handles self-closing behavior accordingly.
 
 In addition to `H.h`, functions are present on the `H` contract for all standard HTML elements. Each standard HTML element has three functions, e.g. for `div`:
 
@@ -111,7 +113,7 @@ In addition to `H.h`, functions are present on the `H` contract for all standard
 - `div(string attributes, string children) returns (string)`
   - Returns `h("div", attributes, children)`
 
-If the tag is self-closing, it does not have a third function; the second function above creates the tag with attributes rather than children.
+If the tag is self-closing, it does not have the third function above, and the second function creates the tag with attributes rather than children.
 
 ## Type Contracts
 
