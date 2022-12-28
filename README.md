@@ -22,11 +22,11 @@ See the [fallback() docs](https://fallback.natecation.xyz) for more information:
     - `SimpleExample.sol`: Simple example app
     - `FullExample.sol`: Example app with prettier HTML responses
     - `create-server.js`: Base TCP server creation logic
-    - `call-server.js`: Example TCP-to-blockchain fallback() server implementation that uses `eth_call`
-    - `send-server.js`: Example TCP-to-blockchain fallback() server implementation that uses `eth_sendTransaction`
-    
+    - `call-server.js`: Example TCP-to-blockchain fallback() server implementation that uses `eth_call` to return responses
+    - `send-server.js`: Example TCP-to-blockchain fallback() server implementation that uses `eth_send*` methods to process requests and return responses (modifies on-chain data)
+
       > This server requires `ethers` as a dependency; run `npm install` first.
-      
+
     - `Dockerfile`: Example one-container Docker setup with server + HAProxy for rate limiting and caching (used to deploy live demos to AWS Fargate)
 
   - `html-dsl/`: Solidity HTML DSL contracts

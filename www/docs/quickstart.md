@@ -312,7 +312,7 @@ async function handleRequest(requestData) {
 }
 ```
 
-> See [`send-server.js`](https://github.com/nathanhleung/fallback/blob/main/src/example/send-server.js) for an example of how to write a server that modifies blockchain state using `eth_sendTransaction`. In this case, instead of getting the data returned from the call and sending it back as the HTTP response, you need to extract the data from the `Response` event (defined in [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol)) after the transaction is included in a block. The initial return value after sending the transaction will just be the transaction hash.
+> See [`send-server.js`](https://github.com/nathanhleung/fallback/blob/main/src/example/send-server.js) for an example of how to write a server that modifies blockchain state using `eth_send*` methods. In this case, instead of getting the data returned from the call and sending it back as the HTTP response, you need to extract the data from the `Response` event (defined in [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol)) after the transaction is included in a block. The initial return value after sending the transaction will just be the transaction hash.
 
 To put this into production, you could run this script on an AWS EC2 instance and [use NGINX as a reverse proxy to forward requests from port 80 to 8000](https://www.digitalocean.com/community/tutorials/how-to-set-up-a-node-js-application-for-production-on-ubuntu-20-04).
 
