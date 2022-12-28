@@ -15,15 +15,3 @@
     padding: 2rem;
   }
 }
-
-.buttons {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.buttons > * {
-  margin-left: 1rem;
-  margin-right: 1rem;
-}

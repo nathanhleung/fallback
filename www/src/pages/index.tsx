@@ -31,8 +31,10 @@ function HomepageHeader() {
         </div>
         <p className="hero__subtitle">{siteConfig.tagline}</p>
 
-        <div className={styles.buttons}>
-          <GithubStarsButton />
+        <div className="block space-y-4 sm:flex sm:align-center sm:justify-center sm:space-y-0 sm:space-x-4">
+          <div>
+            <GithubStarsButton />
+          </div>
           <Link
             className="button button--primary button--lg"
             to="/docs/quickstart"
@@ -212,7 +214,10 @@ export default function Home(): JSX.Element {
           </p>
         </div>
 
-        <form className="grid grid-cols-2 gap-4" onSubmit={handleCompileAndRun}>
+        <form
+          className="grid grid-cols-1 lg:grid-cols-2 gap-4"
+          onSubmit={handleCompileAndRun}
+        >
           <div className="col-auto">
             <div className="grid gap-4 grid-cols-1 mb-8">
               <div className="col-auto">
@@ -227,7 +232,7 @@ export default function Home(): JSX.Element {
                     setRequestPath(e.target.value);
                   }}
                   placeholder="path"
-                  className="shadow appearance-none border-[1px] dark:border-none rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline text-lg"
+                  className="appearance-none border-[1px] dark:border-none rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline text-lg"
                 />
                 <small>The path to write a handler for</small>
               </div>
@@ -239,7 +244,7 @@ export default function Home(): JSX.Element {
                   value={routeFunctionName}
                   onChange={(e) => setRouteFunctionName(e.target.value)}
                   placeholder="routeFunctionName"
-                  className="shadow appearance-none border-[1px] dark:border-none rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline text-lg"
+                  className="appearance-none border-[1px] dark:border-none rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline text-lg"
                   required
                 />
                 <small>
@@ -286,7 +291,7 @@ export default function Home(): JSX.Element {
                   value={responseContent}
                   onChange={(e) => setResponseContent(e.target.value)}
                   placeholder="responseContent"
-                  className="shadow appearance-none border-[1px] dark:border-none rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline text-lg"
+                  className="appearance-none border-[1px] dark:border-none rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline text-lg"
                 />
                 <small>The content of the HTTP response</small>
               </div>
