@@ -232,7 +232,8 @@ export default function Home(): JSX.Element {
                     setRequestPath(e.target.value);
                   }}
                   placeholder="path"
-                  className="appearance-none border-[1px] dark:border-none rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline text-lg"
+                  type="text"
+                  className="appearance-none border-[1px] dark:border-none rounded w-full py-2 px-3 text-gray-700 dark:bg-[rgb(59,59,59)] dark:text-gray-300 leading-tight text-lg"
                 />
                 <small>The path to write a handler for</small>
               </div>
@@ -244,7 +245,8 @@ export default function Home(): JSX.Element {
                   value={routeFunctionName}
                   onChange={(e) => setRouteFunctionName(e.target.value)}
                   placeholder="routeFunctionName"
-                  className="appearance-none border-[1px] dark:border-none rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline text-lg"
+                  type="text"
+                  className="appearance-none border-[1px] dark:border-none rounded w-full py-2 px-3 text-gray-700 dark:bg-[rgb(59,59,59)] dark:text-gray-300 leading-tight text-lg"
                   required
                 />
                 <small>
@@ -291,7 +293,8 @@ export default function Home(): JSX.Element {
                   value={responseContent}
                   onChange={(e) => setResponseContent(e.target.value)}
                   placeholder="responseContent"
-                  className="appearance-none border-[1px] dark:border-none rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline text-lg"
+                  type="text"
+                  className="appearance-none border-[1px] dark:border-none rounded w-full py-2 px-3 text-gray-700 dark:bg-[rgb(59,59,59)] dark:text-gray-300 leading-tight text-lg"
                 />
                 <small>The content of the HTTP response</small>
               </div>
@@ -341,7 +344,8 @@ console.log(Buffer.from(result, "hex").toString());
                 value={requestPath}
                 onChange={(e) => setRequestPath(e.target.value)}
                 placeholder="path"
-                className="shadow appearance-none border-[1px] dark:border-none rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline text-lg"
+                type="text"
+                className="appearance-none border-[1px] dark:border-none rounded w-full py-2 px-3 text-gray-700 dark:bg-[rgb(59,59,59)] dark:text-gray-300 leading-tight text-lg"
               />
             </div>
             <button
