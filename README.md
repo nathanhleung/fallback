@@ -1,6 +1,6 @@
 # [fallback()](https://fallback.natecation.xyz)
 
-[Docs](https://fallback.natecation.xyz) | [Simple Demo](https://simple.fallback.natecation.xyz)
+[Docs](https://fallback.natecation.xyz) | [Simple Demo](http://simple.fallback.natecation.xyz)
 
 Write web apps in Solidity — **fallback()** is a Solidity web framework / a proof-of-concept implementation of HTTP over Ethereum.
 
