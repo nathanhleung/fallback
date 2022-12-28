@@ -9,20 +9,25 @@ const FALLBACK_SERVER_CONTRACT_ADDRESS =
   process.env.FALLBACK_SERVER_CONTRACT_ADDRESS;
 
 async function requestHandler(requestData) {
-  const jsonRpcResponse = await sendJsonRpcRequest({
-    jsonrpc: "2.0",
-    id: "1",
-    method: "eth_call",
-    params: [
-      {
-        to: FALLBACK_SERVER_CONTRACT_ADDRESS,
-        data: requestData,
-      },
-    ],
-  });
+  try {
+    const result = await sendJsonRpcRequest({
+      jsonrpc: "2.0",
+      id: "1",
+      method: "eth_call",
+      params: [
+        {
+          to: FALLBACK_SERVER_CONTRACT_ADDRESS,
+          data: `0x${requestData}`,
+        },
+      ],
+    });
 
-  // Remove leading "0x"
-  return jsonRpcResponse.result.slice(2);
+    // Remove leading "0x"
+    return result.slice(2);
+  } catch (err) {
+    console.error(JSON.stringify(err));
+    return "";
+  }
 }
 
 const server = createServer(requestHandler);

@@ -85,7 +85,7 @@ contract TodoApp is WebApp {
                         ),
                         H.body(
                             H.main(
-                                "class='mx-auto py-5' style='max-width: 500px'",
+                                "class='mx-auto px-3 py-5' style='max-width: 500px'",
                                 StringConcat.concat(
                                     H.h1("fallback() Demo Todo App"),
                                     H.p(
@@ -114,13 +114,13 @@ contract TodoApp is WebApp {
                                             H.small(
                                                 "class='d-block'",
                                                 StringConcat.concat(
-                                                    "This todo app's contract is deployed at ",
+                                                    "This todo app is deployed at ",
                                                     H.b(
-                                                        uint256(
+                                                        Strings.toHexString(
                                                             uint160(
-                                                                address(this)
+                                                                serverAddress
                                                             )
-                                                        ).toHexString(20)
+                                                        )
                                                     ),
                                                     "."
                                                 )
@@ -131,7 +131,7 @@ contract TodoApp is WebApp {
                                                     "Transactions are being sent from ",
                                                     H.b(
                                                         uint256(
-                                                            uint160(msg.sender)
+                                                            uint160(tx.origin)
                                                         ).toHexString(20)
                                                     ),
                                                     "."
@@ -249,7 +249,7 @@ contract TodoApp is WebApp {
                                         "    .filter(todo => hideCompleted ? !todo.completed : true)"
                                         "    .map(todo =>"
                                         "      `<li id='todo-${todo.id}' class='list-group-item d-flex justify-content-between align-items-center'>"
-                                        "        <span>"
+                                        "        <span class='${todo.completed ? 'text-muted' : ''}'>"
                                         "          ${DOMPurify.sanitize(todo.content)}"
                                         "        </span>"
                                         "        ${todo.completed"

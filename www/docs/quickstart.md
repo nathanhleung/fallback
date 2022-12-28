@@ -179,6 +179,8 @@ The deployment example below uses [Foundry](https://github.com/foundry-rs/foundr
 forge create MyServer.sol:MyServer
 ```
 
+An instance of [`SimpleExampleServer`]() is deployed at [**0x87dE8a5D2501759daAB441F5EBd7Af6CE3428bb0**](https://goerli-optimism.etherscan.io/address/0x87de8a5d2501759daab441f5ebd7af6ce3428bb0) and an instance of [`TodoServer`]() is deployed at [**0xA8EA65034B453796984C56cf1FF7fBA11cAAAfd1**](https://goerli-optimism.etherscan.io/address/0xA8EA65034B453796984C56cf1FF7fBA11cAAAfd1) on the Goerli Optimism testnet.
+
 ## 7. Send HTTP requests to the contract
 
 When you send HTTP requests to the `MyServer` contract (hex-encode the requests into the `data` field of a transaction), the return value will be a hex-encoded HTTP response.

@@ -240,6 +240,12 @@ contract FullExampleApp is WebApp {
                         H.code(Strings.toHexString(uint160(msg.sender), 20))
                     )
                 ),
+                H.p(
+                    StringConcat.concat(
+                        "HttpServer address: ",
+                        H.code(Strings.toHexString(uint160(serverAddress), 20))
+                    )
+                ),
                 H.p("Request headers:"),
                 H.pre(requestHeadersString)
             )

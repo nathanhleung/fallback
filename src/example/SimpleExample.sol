@@ -50,8 +50,10 @@ contract SimpleExampleApp is WebApp {
                     ),
                     H.p(
                         StringConcat.concat(
-                            "This example app is deployed to ",
-                            H.b(Strings.toHexString(uint160(msg.sender), 20)),
+                            "This example app is deployed at ",
+                            H.b(
+                                Strings.toHexString(uint160(serverAddress), 20)
+                            ),
                             "."
                         )
                     )

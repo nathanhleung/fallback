@@ -13,6 +13,7 @@ import {WebApp} from "./WebApp.sol";
 contract HttpServer is HttpProxy {
     constructor(WebApp _app, HttpMessages.Options memory messagesOptions) {
         app = _app;
+        app.setServerAddress(address(this));
         handler = new HttpHandler(_app);
         messages = new HttpMessages(messagesOptions);
     }

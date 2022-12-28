@@ -28,6 +28,12 @@ abstract contract WebApp is Ownable {
     HttpConstants c = new HttpConstants();
     bool public debug = false;
 
+    /**
+     * The address of the `HttpServer` contract that is
+     * serving this app.
+     */
+    address public serverAddress;
+
     // The handler for a given route is given by `routes[METHOD][path]`
     mapping(HttpConstants.Method => mapping(string => string)) public routes;
     mapping(HttpConstants.Method => mapping(string => string)) public test;
@@ -53,6 +59,17 @@ abstract contract WebApp is Ownable {
      */
     function setDebug(bool _debug) external onlyOwner {
         debug = _debug;
+    }
+
+    /**
+     * @dev Set the address of the `HttpServer` instance that is
+     *     serving this `WebApp`. Called by `HttpServer` in its
+     *     constructor.
+     */
+    function setServerAddress(address _serverAddress) external {
+        // Only allow server address to be set to a nonzero value once
+        require(serverAddress == address(0));
+        serverAddress = _serverAddress;
     }
 
     /**

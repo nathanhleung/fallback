@@ -1,3 +1,4 @@
+const { rejects } = require("assert");
 const http = require("http");
 const https = require("https");
 const net = require("net");
@@ -13,7 +14,7 @@ const ETHEREUM_RPC_URL =
  * @returns The JSON-RPC response, `JSON.parse`d.
  */
 function sendJsonRpcRequest(jsonRpcData) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const rpcUrl = new URL(ETHEREUM_RPC_URL);
 
     const requestOptions = {
@@ -27,7 +28,7 @@ function sendJsonRpcRequest(jsonRpcData) {
     };
 
     let request;
-    if (rpcUrl.protocol == "https") {
+    if (rpcUrl.protocol == "https:") {
       request = https.request(requestOptions, handleResponse);
     } else {
       request = http.request(requestOptions, handleResponse);
@@ -36,7 +37,15 @@ function sendJsonRpcRequest(jsonRpcData) {
     function handleResponse(response) {
       let responseData = "";
       response.on("data", (chunk) => (responseData += chunk));
-      response.on("end", () => resolve(JSON.parse(responseData)));
+      response.on("end", () => {
+        const responseJson = JSON.parse(responseData);
+
+        if (responseJson.error) {
+          reject(responseJson);
+        } else {
+          resolve(responseJson.result);
+        }
+      });
     }
 
     request.write(JSON.stringify(jsonRpcData));
