@@ -179,8 +179,6 @@ The deployment example below uses [Foundry](https://github.com/foundry-rs/foundr
 forge create MyServer.sol:MyServer
 ```
 
-An instance of [`SimpleExampleServer`]() is deployed at [**0x87dE8a5D2501759daAB441F5EBd7Af6CE3428bb0**](https://goerli-optimism.etherscan.io/address/0x87de8a5d2501759daab441f5ebd7af6ce3428bb0) and an instance of [`TodoServer`]() is deployed at [**0xA8EA65034B453796984C56cf1FF7fBA11cAAAfd1**](https://goerli-optimism.etherscan.io/address/0xA8EA65034B453796984C56cf1FF7fBA11cAAAfd1) on the Goerli Optimism testnet.
-
 ## 7. Send HTTP requests to the contract
 
 When you send HTTP requests to the `MyServer` contract (hex-encode the requests into the `data` field of a transaction), the return value will be a hex-encoded HTTP response.
@@ -320,7 +318,7 @@ To put this into production, you could run this script on an AWS EC2 instance an
 
 You could also add HTTPS support by [configuring NGINX with Let's Encrypt](https://www.digitalocean.com/community/tutorials/how-to-secure-nginx-with-let-s-encrypt-on-ubuntu-20-04).
 
-Another alternative is HAProxy, which [supports proxying over both TCP and HTTP](https://www.haproxy.com/blog/layer-4-and-layer-7-proxy-mode/). You could use [HAProxy's connection limiting, queueing](https://www.haproxy.com/blog/protect-servers-with-haproxy-connection-limits-and-queues/), and [rate-limiting features](https://www.haproxy.com/blog/four-examples-of-haproxy-rate-limiting/) to control the load on your blockchain RPCs.
+Another alternative is HAProxy, which [supports proxying over both TCP and HTTP](https://www.haproxy.com/blog/layer-4-and-layer-7-proxy-mode/). You could use [HAProxy's connection limiting, queueing](https://www.haproxy.com/blog/protect-servers-with-haproxy-connection-limits-and-queues/), [caching](https://www.haproxy.com/blog/accelerate-your-apis-by-using-the-haproxy-cache/), and [rate-limiting features](https://www.haproxy.com/blog/four-examples-of-haproxy-rate-limiting/) to control the load on your blockchain RPCs.
 
 See the [`Dockerfile`](https://github.com/nathanhleung/fallback/blob/main/src/example/Dockerfile) in `src/example` for an example one-container setup with HAProxy.
 
@@ -367,3 +365,5 @@ contract ExamplePostApp is WebApp {
 For a working Node.js TCP server example, see [`call-server.js`](https://github.com/nathanhleung/fallback/blob/main/src/example/call-server.js) in the `src/example` directory.
 
 Finally, see [`src/example/Todo.sol`](https://github.com/nathanhleung/fallback/blob/main/src/example/Todo.sol) for a working todo app. If run with the [`send-server.js`](https://github.com/nathanhleung/fallback/blob/main/src/example/send-server.js) server, this app demonstrates reading and writing state to the blockchain over HTTP.
+
+An instance of [`SimpleExampleServer`](https://github.com/nathanhleung/fallback/blob/main/src/example/SimpleExample.sol) is deployed at [**0x87dE8a5D2501759daAB441F5EBd7Af6CE3428bb0**](https://goerli-optimism.etherscan.io/address/0x87de8a5d2501759daab441f5ebd7af6ce3428bb0) and an instance of [`TodoServer`](https://github.com/nathanhleung/fallback/blob/main/src/example/Todo.sol) is deployed at [**0xA8EA65034B453796984C56cf1FF7fBA11cAAAfd1**](https://goerli-optimism.etherscan.io/address/0xA8EA65034B453796984C56cf1FF7fBA11cAAAfd1) on the Goerli Optimism testnet.

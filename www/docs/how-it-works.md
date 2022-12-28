@@ -200,3 +200,17 @@ If there is no route configured, [`HttpHandler`](https://github.com/nathanhleung
 If an error occurs during request handling, a `400` (Bad Request) or `500` (Internal Server Error) error will be returned depending on where exactly the error occurred (generally, `400` if it's in `HttpProxy` and `500` if it's in `HttpHandler`).
 
 If `debug` mode is enabled on [`WebApp`](https://github.com/nathanhleung/fallback/blob/main/src/WebApp.sol), the error pages will show the full request and response data. In `debug` mode, example error pages can be accessed at the paths `/__not_found` (404), `/__bad_request` (400), and `/__error` (500).
+
+## Appendix: Example Transaction
+
+An instance of [`TodoServer`](https://github.com/nathanhleung/fallback/blob/main/src/example/Todo.sol) is deployed at [**0xA8EA65034B453796984C56cf1FF7fBA11cAAAfd1**](https://goerli-optimism.etherscan.io/address/0xA8EA65034B453796984C56cf1FF7fBA11cAAAfd1) on the Goerli Optimism testnet.
+
+Here's a screenshot of the input and output data of [an example transaction](https://goerli-optimism.etherscan.io/tx/0x948d272d235ae351275bf2b7b4766cf13d816062693676cb279f53e8c5459269) served by [`send-server.js`](https://github.com/nathanhleung/fallback/blob/main/src/example/send-server.js).
+
+### Input Data
+
+![input data](/img/input-data.png)
+
+### Output Data
+
+![output data](/img/output-data.png)

@@ -4,7 +4,7 @@ https://fallback.natecation.xyz
 
 Write web apps in Solidity — **fallback()** is a Solidity web framework / a proof-of-concept implementation of HTTP over Ethereum.
 
-See the [fallback() docs]() for more information:
+See the [fallback() docs](https://fallback.natecation.xyz) for more information:
 
 - [Quick Start](https://fallback.natecation.xyz/docs/quickstart)
 - [How it Works](https://fallback.natecation.xyz/docs/how-it-works)

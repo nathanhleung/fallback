@@ -31,7 +31,7 @@ async function waitForTransaction(transactionHash) {
   return transactionReceipt;
 }
 
-async function requestHandler(requestData) {
+async function requestHandler(requestData, attempt = 0) {
   try {
     const wallet = new ethers.Wallet(PAYER_PRIVATE_KEY);
     const walletAddress = await wallet.getAddress();
@@ -42,11 +42,14 @@ async function requestHandler(requestData) {
       data: `0x${requestData}`,
     };
 
+    // Making sure we always have the right nonce is the main blocker for
+    // good request concurrency. Some ideas here:
+    // https://ethereum.stackexchange.com/questions/39790/concurrency-patterns-for-account-nonce
     const transactionCountRequest = sendJsonRpcRequest({
       jsonrpc: "2.0",
       id: "0",
       method: "eth_getTransactionCount",
-      params: [walletAddress, "latest"],
+      params: [walletAddress, "pending"],
     });
 
     const gasEstimateRequest = sendJsonRpcRequest({
@@ -90,8 +93,16 @@ async function requestHandler(requestData) {
     const responseEventData = transactionReceipt.logs[0].data;
     return responseEventData.slice(2);
   } catch (err) {
-    console.error(JSON.stringify(err));
-    return "";
+    // Hacky solution (for now) to handle duplicate nonces
+    if (err.error.message.includes("nonce too low") && attempt < 5) {
+      // Try again
+      console.error("Nonce too low, trying again...");
+      // Limit attempts to prevent leaking memory
+      return requestHandler(requestData, attempt + 1);
+    } else {
+      console.error(JSON.stringify(err));
+      return "";
+    }
   }
 }
 
