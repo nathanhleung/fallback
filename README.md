@@ -25,7 +25,7 @@ See the [fallback() docs](https://fallback.natecation.xyz) for more information:
     - `call-server.js`: Example TCP-to-blockchain fallback() server implementation that uses `eth_call`
     - `send-server.js`: Example TCP-to-blockchain fallback() server implementation that uses `eth_sendTransaction`
       > This server requires `ethers` as a dependency; run `npm install` first.
-    - `Dockerfile`: Example one-container Docker setup with server + HAProxy for rate limiting
+    - `Dockerfile`: Example one-container Docker setup with server + HAProxy for rate limiting and caching
 
   - `html-dsl/`: Solidity HTML DSL contracts
     - `generate-dsl.js`: Script which generates a Solidity DSL function for each valid HTML element

@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.4  
 
 # Example simple Dockerfile for fallback() server
-# with HAProxy in front
+# with HAProxy in front for caching and rate-limiting
 FROM haproxytech/haproxy-alpine:2.0
 
 ###############
@@ -24,12 +24,14 @@ WORKDIR /app
 
 COPY <<EOF haproxy.cfg
 defaults
-  mode tcp
+  mode http
   timeout client 30s
+  timeout connect 60s
+  timeout server 60s
 
 frontend fallback-frontend
   bind :80
-  # Rate limiting
+  # Rate limiting - no more than 20 requests every 10 seconds
   # https://www.haproxy.com/blog/four-examples-of-haproxy-rate-limiting/
   stick-table  type ipv6  size 25k  expire 30s  store http_req_rate(10s)
   http-request track-sc0 src
@@ -38,8 +40,32 @@ frontend fallback-frontend
 
   default_backend fallback-backend
 
+  # Return cache status header
+  http-response set-header X-Cache-Status HIT if !{ srv_id -m found }
+  http-response set-header X-Cache-Status MISS if { srv_id -m found }
+
+
+cache fallback-index-cache
+  total-max-size 32 # MB
+  max-object-size 10000 # bytes
+  max-age 3600 # seconds
+
+cache fallback-get-cache
+  total-max-size 32 # MB
+  max-object-size 10000 # bytes
+  max-age 5 # seconds
+
 backend fallback-backend
   timeout queue 30s
+
+  # Cache GET requests, cache index for 60 minutes
+  # https://www.haproxy.com/blog/accelerate-your-apis-by-using-the-haproxy-cache/
+  http-request cache-use fallback-index-cache if { path / }
+  http-request cache-use fallback-get-cache if { method GET } !{ path / }
+
+  http-response cache-store fallback-index-cache
+  http-response cache-store fallback-get-cache
+
   server server1 127.0.0.1:${PORT}
 EOF
 
@@ -52,6 +78,7 @@ RUN git clone https://github.com/nathanhleung/fallback
 
 WORKDIR /app/fallback/src/example
 RUN npm install
+RUN npm install -g pm2
 
 # Overwrite default HAProxy `docker-entrypoint.sh`. Mostly copied from
 # https://github.com/haproxytech/haproxy-docker-alpine/blob/main/2.8/docker-entrypoint.sh
@@ -78,8 +105,15 @@ fi
 exec "$@"
 EOF
 
-# To run the image, add your env vars and run
+RUN chmod +x /docker-entrypoint.sh
+
+# To run the image, add your env vars and run:
+#
 # `docker run --env ETHEREUM_RPC_URL= \
 #    --env FALLBACK_SERVER_CONTRACT_ADDRESS= \
 #    --env SERVER_MODE= \
-#    --env PAYER_PRIVATE_KEY= `
+#    --env PAYER_PRIVATE_KEY= \
+#    --publish 8080:80 \
+#    nathanhleung/fallback`
+#
+# This will expose the container on localhost:8080.

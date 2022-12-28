@@ -320,7 +320,7 @@ You could also add HTTPS support by [configuring NGINX with Let's Encrypt](https
 
 Another alternative is HAProxy, which [supports proxying over both TCP and HTTP](https://www.haproxy.com/blog/layer-4-and-layer-7-proxy-mode/). You could use [HAProxy's connection limiting, queueing](https://www.haproxy.com/blog/protect-servers-with-haproxy-connection-limits-and-queues/), [caching](https://www.haproxy.com/blog/accelerate-your-apis-by-using-the-haproxy-cache/), and [rate-limiting features](https://www.haproxy.com/blog/four-examples-of-haproxy-rate-limiting/) to control the load on your blockchain RPCs.
 
-See the [`Dockerfile`](https://github.com/nathanhleung/fallback/blob/main/src/example/Dockerfile) in `src/example` for an example one-container setup with HAProxy.
+See the [`Dockerfile`](https://github.com/nathanhleung/fallback/blob/main/src/example/Dockerfile) in `src/example` for an example one-container setup with HAProxy for caching and rate limiting.
 
 ## 9. Next steps
 
