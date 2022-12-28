@@ -25,26 +25,35 @@ contract SimpleExampleApp is WebApp {
         routes[HttpConstants.Method.GET]["/json"] = "getJson";
     }
 
-    function getIndex() external pure returns (HttpMessages.Response memory) {
+    function getIndex() external view returns (HttpMessages.Response memory) {
         string memory htmlString = H.html5(
             H.body(
                 StringConcat.concat(
                     H.h1("fallback() web framework"),
                     H.p(H.i("a solidity web framework")),
-                    StringConcat.concat(
-                        H.a("href='/text'", "Text"),
-                        H.br(),
-                        H.a("href='/form'", "Form"),
-                        H.br(),
-                        H.a("href='/debug'", "Debug"),
-                        H.br(),
-                        H.a("href='/error'", "Error"),
-                        H.br(),
-                        H.a("href='/panic'", "Panic"),
-                        H.br(),
-                        H.a("href='/github'", "Github"),
-                        H.br(),
-                        H.a("href='/json'", "JSON")
+                    H.div(
+                        StringConcat.concat(
+                            H.a("href='/text'", "Text"),
+                            H.br(),
+                            H.a("href='/form'", "Form"),
+                            H.br(),
+                            H.a("href='/debug'", "Debug"),
+                            H.br(),
+                            H.a("href='/error'", "Error"),
+                            H.br(),
+                            H.a("href='/panic'", "Panic"),
+                            H.br(),
+                            H.a("href='/github'", "Github"),
+                            H.br(),
+                            H.a("href='/json'", "JSON")
+                        )
+                    ),
+                    H.p(
+                        StringConcat.concat(
+                            "This example app is deployed to ",
+                            H.b(Strings.toHexString(uint160(msg.sender), 20)),
+                            "."
+                        )
                     )
                 )
             )
@@ -71,7 +80,7 @@ contract SimpleExampleApp is WebApp {
     function getForm() external pure returns (HttpMessages.Response memory) {
         HttpMessages.Response memory response;
         response
-            .content = "curl -v -d 'random post data' -X POST http://localhost:8000/form";
+            .content = "curl -v -d 'random post data' -X POST http://simple.fallback.natecation.xyz/form";
         return response;
     }
 
