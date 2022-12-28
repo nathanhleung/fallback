@@ -1,3 +1,5 @@
+<img height="100" src="www/static/img/logo-256.png" alt="fallback() logo" />
+
 # [fallback()](https://fallback.natecation.xyz)
 
 [Docs](https://fallback.natecation.xyz) | [Simple Demo](http://simple.fallback.natecation.xyz)
