@@ -366,4 +366,12 @@ For a working Node.js TCP server example, see [`call-server.js`](https://github.
 
 Finally, see [`src/example/Todo.sol`](https://github.com/nathanhleung/fallback/blob/main/src/example/Todo.sol) for a working todo app. If run with the [`send-server.js`](https://github.com/nathanhleung/fallback/blob/main/src/example/send-server.js) server, this app demonstrates reading and writing state to the blockchain over HTTP.
 
-An instance of [`SimpleExampleServer`](https://github.com/nathanhleung/fallback/blob/main/src/example/SimpleExample.sol) is deployed at [**0x87dE8a5D2501759daAB441F5EBd7Af6CE3428bb0**](https://goerli-optimism.etherscan.io/address/0x87de8a5d2501759daab441f5ebd7af6ce3428bb0) and an instance of [`TodoServer`](https://github.com/nathanhleung/fallback/blob/main/src/example/Todo.sol) is deployed at [**0xA8EA65034B453796984C56cf1FF7fBA11cAAAfd1**](https://goerli-optimism.etherscan.io/address/0xA8EA65034B453796984C56cf1FF7fBA11cAAAfd1) on the Goerli Optimism testnet.
+## Appendix: Live Demos
+
+There are fallback() contracts live on the Goerli Optimism testnet.
+
+An instance of [`SimpleExampleServer`](https://github.com/nathanhleung/fallback/blob/main/src/example/SimpleExample.sol) is deployed at [**0x87dE8a5D2501759daAB441F5EBd7Af6CE3428bb0**](https://goerli-optimism.etherscan.io/address/0x87de8a5d2501759daab441f5ebd7af6ce3428bb0) and served with [`call-server.js`](https://github.com/nathanhleung/fallback/blob/main/src/example/call-server.js) at http://simple.fallback.natecation.xyz.
+
+An instance of [`TodoServer`](https://github.com/nathanhleung/fallback/blob/main/src/example/Todo.sol) is deployed at [**0xA8EA65034B453796984C56cf1FF7fBA11cAAAfd1**](https://goerli-optimism.etherscan.io/address/0xA8EA65034B453796984C56cf1FF7fBA11cAAAfd1) and served with [`send-server.js`](https://github.com/nathanhleung/fallback/blob/main/src/example/send-server.js) at http://todo.fallback.natecation.xyz.
+
+> If http://todo.fallback.natecation.xyz isn't working, the sender account is probably out of Optimistic Goerli ETH. Try again later when I've sent it more, or donate some to [0xDB922AA1571aBCEc925221B7B6E9F9db4edDC625](https://goerli-optimism.etherscan.io/address/0xDB922AA1571aBCEc925221B7B6E9F9db4edDC625)!

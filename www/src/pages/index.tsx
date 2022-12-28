@@ -46,7 +46,8 @@ function HomepageHeader() {
           <p>
             <b>fallback()</b> is a Solidity web framework / a proof-of-concept
             implementation of HTTP over Ethereum. For more, see{" "}
-            <Link to="/docs/how-it-works">How it Works</Link>.
+            <Link to="/docs/how-it-works">How it Works</Link> or the{" "}
+            <a href="http://simple.fallback.natecation.xyz">Live Demo</a>.
           </p>
         </div>
       </div>
@@ -386,6 +387,12 @@ console.log(Buffer.from(result, "hex").toString());
                 >
                   Go to Quick Start
                 </Link>
+                <a
+                  className="button button--secondary button--lg ml-4"
+                  href="http://todo.fallback.natecation.xyz"
+                >
+                  See Live Demo
+                </a>
               </>
             )}
           </div>
