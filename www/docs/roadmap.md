@@ -64,7 +64,7 @@ Some ideas for further work:
 
 A major limitation of the contract as written now is that if run in `send` mode (i.e. mutating the blockchain), it "logs" all HTTP requests on-chain as input data and HTTP responses on-chain as output data.
 
-> See the [todo app contract's transactions on Etherscan](https://goerli-optimism.etherscan.io/address/0xa8ea65034b453796984c56cf1ff7fba11caaafd1) for an example of the data that is written on-chain.
+> See the [todo app contract's transactions on Etherscan](https://goerli-optimism.etherscan.io/address/0x919F31dAC93eBf9fFd15a54acd13082f34fDd6D3) for an example of the data that is written on-chain.
 
 - What would it take to maintain the same HTTP request/response functionality while encrypting requests?
 - Can we implement HTTPS on-chain, or is there some sort of more blockchain-native zk-SNARK solution we can use?

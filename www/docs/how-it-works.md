@@ -203,7 +203,7 @@ If `debug` mode is enabled on [`WebApp`](https://github.com/nathanhleung/fallbac
 
 ## Appendix: Example Transaction
 
-An instance of [`TodoServer`](https://github.com/nathanhleung/fallback/blob/main/src/example/Todo.sol) is deployed at [**0xA8EA65034B453796984C56cf1FF7fBA11cAAAfd1**](https://goerli-optimism.etherscan.io/address/0xA8EA65034B453796984C56cf1FF7fBA11cAAAfd1) on the Goerli Optimism testnet.
+An instance of [`TodoServer`](https://github.com/nathanhleung/fallback/blob/main/src/example/Todo.sol) is deployed at [**0x919F31dAC93eBf9fFd15a54acd13082f34fDd6D3**](https://goerli-optimism.etherscan.io/address/0x919F31dAC93eBf9fFd15a54acd13082f34fDd6D3) on the Goerli Optimism testnet.
 
 Here's a screenshot of the input and output data of [an example transaction](https://goerli-optimism.etherscan.io/tx/0x948d272d235ae351275bf2b7b4766cf13d816062693676cb279f53e8c5459269) served by [`send-server.js`](https://github.com/nathanhleung/fallback/blob/main/src/example/send-server.js).
 
