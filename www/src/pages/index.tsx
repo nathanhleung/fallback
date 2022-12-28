@@ -375,7 +375,7 @@ console.log(Buffer.from(result, "hex").toString());
                 ? "Compiling..."
                 : "// Compile and run to see response"}
             </CodeBlock>
-            {response && (
+            {!response && (
               <>
                 <p>
                   Now that you've tried it, write your own fallback() app by
@@ -393,6 +393,19 @@ console.log(Buffer.from(result, "hex").toString());
                 >
                   See Live Demo
                 </a>
+                <small className="block mt-6 text-gray-500">
+                  Note: the live demo linked above writes the content of HTTP
+                  requests to the blockchain. See the input data on{" "}
+                  <a href="https://goerli-optimism.etherscan.io/address/0xa8ea65034b453796984c56cf1ff7fba11caaafd1">
+                    this contract
+                  </a>{" "}
+                  to see an example of the type of data that is logged. If you
+                  do not want your request data to be logged, visit the{" "}
+                  <a href="http://simple.fallback.natecation.xyz">
+                    read-only simple demo
+                  </a>{" "}
+                  instead.
+                </small>
               </>
             )}
           </div>

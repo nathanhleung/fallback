@@ -374,4 +374,6 @@ An instance of [`SimpleExampleServer`](https://github.com/nathanhleung/fallback/
 
 An instance of [`TodoServer`](https://github.com/nathanhleung/fallback/blob/main/src/example/Todo.sol) is deployed at [**0xA8EA65034B453796984C56cf1FF7fBA11cAAAfd1**](https://goerli-optimism.etherscan.io/address/0xA8EA65034B453796984C56cf1FF7fBA11cAAAfd1) and served with [`send-server.js`](https://github.com/nathanhleung/fallback/blob/main/src/example/send-server.js) at http://todo.fallback.natecation.xyz.
 
+> Privacy note: the todo demo logs all incoming HTTP requests to the blockchain. See the input data on [this contract](https://goerli-optimism.etherscan.io/address/0xa8ea65034b453796984c56cf1ff7fba11caaafd1) to see an example of the type of data that is logged. Please do not visit the page if you are not comfortable with this; see the simple demo instead, which is read-only.
+
 > If http://todo.fallback.natecation.xyz isn't working, the sender account is probably out of Optimistic Goerli ETH. Try again later when I've sent it more, or donate some to [0xDB922AA1571aBCEc925221B7B6E9F9db4edDC625](https://goerli-optimism.etherscan.io/address/0xDB922AA1571aBCEc925221B7B6E9F9db4edDC625)!
