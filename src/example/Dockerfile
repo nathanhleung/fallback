@@ -83,9 +83,3 @@ EOF
 #    --env FALLBACK_SERVER_CONTRACT_ADDRESS= \
 #    --env SERVER_MODE= \
 #    --env PAYER_PRIVATE_KEY= `
-
-docker run --env ETHEREUM_RPC_HOST= \
-   --env ETHEREUM_RPC_PORT= \
-   --env FALLBACK_SERVER_CONTRACT_ADDRESS= \
-   --env SERVER_MODE= \
-   --env PAYER_PRIVATE_KEY= 
