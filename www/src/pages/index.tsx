@@ -375,7 +375,7 @@ console.log(Buffer.from(result, "hex").toString());
                 ? "Compiling..."
                 : "// Compile and run to see response"}
             </CodeBlock>
-            {!response && (
+            {response && (
               <>
                 <p>
                   Now that you've tried it, write your own fallback() app by
