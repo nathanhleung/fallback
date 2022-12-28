@@ -99,7 +99,7 @@ contract MyApp is WebApp {
 
 Implement your route handlers in `MyApp.sol`. You can import `H`, fallback()'s companion Solidity HTML DSL, and use the `html` function to return an HTML response.
 
-The full list of available `WebApp` response helpers (e.g. `text`, `json`, `redirect`) is in the [API Reference](/api). You can also build an `HttpMessages.Response` struct from scratch and return that.
+The full list of available `WebApp` response helpers (e.g. `text`, `json`, `redirect`) is in the [API Reference](/docs/api). You can also build an `HttpMessages.Response` struct from scratch and return that.
 
 > The response helpers build `HttpMessages.Response` instances with specific headers (e.g. the `json` response helper function builds a `Response` with a `Content-Type: application/json` header).
 >

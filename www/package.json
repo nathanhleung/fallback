@@ -27,7 +27,8 @@
     "raw-loader": "^4.0.2",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
-    "solc": "^0.8.17"
+    "solc": "^0.8.17",
+    "web-worker": "^1.2.0"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "2.2.0",

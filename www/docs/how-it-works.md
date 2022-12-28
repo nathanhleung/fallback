@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # How It Works
 
-Let's trace through what happens when you send a request to the `MyServer` created in the [Quick Start](/docs/quick-start). An abridged version of the `MyServer` and `MyApp` contracts is reproduced below:
+Let's trace through what happens when you send a request to the `MyServer` created in the [Quick Start](/docs/quickstart). An abridged version of the `MyServer` and `MyApp` contracts is reproduced below:
 
 ```solidity title="MyApp.sol" showLineNumbers
 contract MyApp is WebApp {

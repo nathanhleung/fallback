@@ -1,27 +1,34 @@
 import React, { useState, useRef, useEffect } from "react";
 import clsx from "clsx";
+import keythereum from "keythereum";
+import Worker from "web-worker";
 import Head from "@docusaurus/Head";
 import Link from "@docusaurus/Link";
 import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 import { Chain, Common, Hardfork } from "@ethereumjs/common";
 import { Transaction } from "@ethereumjs/tx";
 import { Account, Address } from "@ethereumjs/util";
-import { VM } from "@ethereumjs/vm";
+import { type VM } from "@ethereumjs/vm";
 import Layout from "@theme/Layout";
 import CodeBlock from "@theme/CodeBlock";
-import keythereum from "keythereum";
 
 import styles from "./index.module.css";
 import { GithubStarsButton } from "../components/GithubStarsButton";
-
-const solc = new Worker(new URL("../solc", import.meta.url));
 
 function HomepageHeader() {
   const { siteConfig } = useDocusaurusContext();
   return (
     <header className={clsx("hero bg-transparent", styles.heroBanner)}>
       <div className="container">
-        <h1 className="hero__title dark:text-white">{siteConfig.title}</h1>
+        <div className="flex items-center justify-center my-4">
+          <img
+            src="img/logo.svg"
+            className="h-20 mr-1 dark:mr-6 transition-all"
+          />
+          <h1 className="hero__title dark:text-white mb-0">
+            {siteConfig.title}
+          </h1>
+        </div>
         <p className="hero__subtitle">{siteConfig.tagline}</p>
 
         <div className={styles.buttons}>
@@ -57,22 +64,33 @@ export default function Home(): JSX.Element {
   const [response, setResponse] = useState("");
   const compileCounterRef = useRef(0);
   const vmRef = useRef<VM>();
+  const commonRef = useRef<Common>();
 
-  const common = new Common({
-    chain: Chain.Mainnet,
-    hardfork: Hardfork.Merge,
-  });
+  // Load worker asynchronously for SSR
+  // compatibility
+  const solcWorkerRef = useRef<Worker>();
 
   useEffect(() => {
-    VM.create({
-      common,
-    }).then((vm) => (vmRef.current = vm));
+    solcWorkerRef.current = new Worker(new URL("../solc", import.meta.url));
+
+    commonRef.current = new Common({
+      chain: Chain.Mainnet,
+      hardfork: Hardfork.Merge,
+    });
+
+    // Importing this module directly causes an
+    // SSR error
+    import("@ethereumjs/vm").then(({ VM }) => {
+      VM.create({
+        common: commonRef.current,
+      }).then((vm) => (vmRef.current = vm));
+    });
   }, []);
 
   async function compileContract() {
     return new Promise((resolve, reject) => {
       const id = compileCounterRef.current;
-      solc.postMessage({
+      solcWorkerRef.current.postMessage({
         id,
         path,
         routeFunctionName,
@@ -80,7 +98,7 @@ export default function Home(): JSX.Element {
         responseContent,
       });
       compileCounterRef.current += 1;
-      solc.onmessage = ({ data }) => {
+      solcWorkerRef.current.onmessage = ({ data }) => {
         if (data.id === id) {
           if (data.evm) {
             resolve(data.evm);
@@ -142,7 +160,7 @@ export default function Home(): JSX.Element {
           value: 0,
           data: `0x${bytecode.object}`,
         },
-        { common }
+        { common: commonRef.current }
       ).sign(privateKey);
 
       const { createdAddress } = await vmRef.current.runTx({
