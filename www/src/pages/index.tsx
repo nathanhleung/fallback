@@ -47,7 +47,8 @@ function HomepageHeader() {
             <b>fallback()</b> is a Solidity web framework / a proof-of-concept
             implementation of HTTP over Ethereum. For more, see{" "}
             <Link to="/docs/how-it-works">How it Works</Link> or the{" "}
-            <a href="http://simple.fallback.natecation.xyz">Live Demo</a>.
+            <a href="http://simple.fallback.natecation.xyz">Live Demo</a> (on
+            Goerli Optimism).
           </p>
         </div>
       </div>
@@ -381,31 +382,44 @@ console.log(Buffer.from(result, "hex").toString());
                   Now that you've tried it, write your own fallback() app by
                   following the <Link to="/docs/quickstart">Quick Start</Link>.
                 </p>
-                <Link
-                  className="button button--primary button--lg"
-                  to="/docs/quickstart"
-                >
-                  Go to Quick Start
-                </Link>
-                <a
-                  className="button button--secondary button--lg ml-4"
-                  href="http://todo.fallback.natecation.xyz"
-                >
-                  See Live Demo
-                </a>
-                <small className="block mt-6 text-gray-500">
-                  Note: the live demo linked above writes the content of HTTP
-                  requests to the blockchain. See the input data on{" "}
-                  <a href="https://goerli-optimism.etherscan.io/address/0x919F31dAC93eBf9fFd15a54acd13082f34fDd6D3">
-                    this contract
-                  </a>{" "}
-                  to see an example of the type of data that is logged. If you
-                  do not want your request data to be logged, visit the{" "}
-                  <a href="http://simple.fallback.natecation.xyz">
-                    read-only simple demo
-                  </a>{" "}
-                  instead.
-                </small>
+                <div className="block sm:flex sm:items-start">
+                  <Link
+                    className="button button--primary button--lg"
+                    to="/docs/quickstart"
+                  >
+                    Go to Quick Start
+                  </Link>
+                  <div className="mt-2 sm:ml-4 sm:mt-0">
+                    <a
+                      className="button button--secondary button--lg"
+                      href="http://todo.fallback.natecation.xyz"
+                      onClick={(e) => {
+                        const confirmed = confirm(
+                          "Did you read the note below about potential on-chain HTTP request logging? Please confirm you want to proceed to the demo."
+                        );
+                        if (!confirmed) {
+                          e.preventDefault();
+                        }
+                      }}
+                    >
+                      See Live Demo
+                    </a>
+                    <small className="block mt-6 text-gray-500">
+                      Note: the live demo linked above writes the content of
+                      HTTP requests to the Goerli Optimism testnet chain. See
+                      the input data on transactions on{" "}
+                      <a href="https://goerli-optimism.etherscan.io/address/0x919F31dAC93eBf9fFd15a54acd13082f34fDd6D3">
+                        this contract
+                      </a>{" "}
+                      to see an example of the type of data that is logged. If
+                      you do not want your request data to be logged, visit the{" "}
+                      <a href="http://simple.fallback.natecation.xyz">
+                        read-only simple demo
+                      </a>{" "}
+                      instead.
+                    </small>
+                  </div>
+                </div>
               </>
             )}
           </div>
