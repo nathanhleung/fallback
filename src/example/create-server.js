@@ -1,8 +1,10 @@
 const http = require("http");
+const https = require("https");
 const net = require("net");
+const { URL } = require("url");
 
-const ETHEREUM_RPC_HOST = process.env.ETHEREUM_RPC_HOST || "127.0.0.1";
-const ETHEREUM_RPC_PORT = process.env.ETHEREUM_RPC_PORT || 8545;
+const ETHEREUM_RPC_URL =
+  process.env.ETHEREUM_RPC_URL || "http://127.0.0.1:8545";
 
 /**
  * Sends a JSON-RPC request to the Ethereum RPC.
@@ -12,24 +14,33 @@ const ETHEREUM_RPC_PORT = process.env.ETHEREUM_RPC_PORT || 8545;
  */
 function sendJsonRpcRequest(jsonRpcData) {
   return new Promise((resolve) => {
-    const httpRequest = http.request(
-      {
-        host: ETHEREUM_RPC_HOST,
-        path: "/",
-        port: ETHEREUM_RPC_PORT,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+    const rpcUrl = new URL(ETHEREUM_RPC_URL);
+
+    const requestOptions = {
+      host: rpcUrl.hostname,
+      path: rpcUrl.pathname,
+      port: rpcUrl.port,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-      (response) => {
-        let responseData = "";
-        response.on("data", (chunk) => (responseData += chunk));
-        response.on("end", () => resolve(JSON.parse(responseData)));
-      }
-    );
-    httpRequest.write(JSON.stringify(jsonRpcData));
-    httpRequest.end();
+    };
+
+    let request;
+    if (rpcUrl.protocol == "https") {
+      request = https.request(requestOptions, handleResponse);
+    } else {
+      request = http.request(requestOptions, handleResponse);
+    }
+
+    function handleResponse(response) {
+      let responseData = "";
+      response.on("data", (chunk) => (responseData += chunk));
+      response.on("end", () => resolve(JSON.parse(responseData)));
+    }
+
+    request.write(JSON.stringify(jsonRpcData));
+    request.end();
   });
 }
 

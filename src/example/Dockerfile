@@ -7,8 +7,7 @@ FROM haproxytech/haproxy-alpine:2.0
 ###############
 # Environment #
 ###############
-ENV ETHEREUM_RPC_HOST="127.0.0.1"
-ENV ETHEREUM_RPC_PORT=8545
+ENV ETHEREUM_RPC_URL="http://127.0.0.1:8545"
 
 ENV PORT=8000
 ENV FALLBACK_SERVER_CONTRACT_ADDRESS=""
@@ -45,7 +44,9 @@ backend fallback-backend
 EOF
 
 RUN mv haproxy.cfg /usr/local/etc/haproxy/haproxy.cfg
-RUN apk add --update nodejs npm
+RUN apk update
+RUN apk add git
+RUN apk add nodejs npm
 
 RUN git clone https://github.com/nathanhleung/fallback
 
@@ -76,3 +77,15 @@ fi
 
 exec "$@"
 EOF
+
+# To run the image, add your env vars and run
+# `docker run --env ETHEREUM_RPC_URL= \
+#    --env FALLBACK_SERVER_CONTRACT_ADDRESS= \
+#    --env SERVER_MODE= \
+#    --env PAYER_PRIVATE_KEY= `
+
+docker run --env ETHEREUM_RPC_HOST= \
+   --env ETHEREUM_RPC_PORT= \
+   --env FALLBACK_SERVER_CONTRACT_ADDRESS= \
+   --env SERVER_MODE= \
+   --env PAYER_PRIVATE_KEY= 
