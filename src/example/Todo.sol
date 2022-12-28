@@ -122,7 +122,13 @@ contract TodoApp is WebApp {
                                                             )
                                                         )
                                                     ),
-                                                    "."
+                                                    " from ",
+                                                    H.b(
+                                                        H.a(
+                                                            "href='https://github.com/nathanhleung/fallback/blob/main/src/example/Todo.sol'",
+                                                            "Todo.sol"
+                                                        )
+                                                    )
                                                 )
                                             ),
                                             H.small(

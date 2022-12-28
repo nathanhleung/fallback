@@ -1,6 +1,6 @@
 /**
  * A server which forwards HTTP requests to the
- * smart contract and gets responses using `eth_sendTransaction`
+ * smart contract and gets responses using an `eth_send*` method
  * (i.e. this server can change blockchain state).
  */
 const { ethers } = require("ethers");

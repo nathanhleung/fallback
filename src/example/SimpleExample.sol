@@ -54,7 +54,13 @@ contract SimpleExampleApp is WebApp {
                             H.b(
                                 Strings.toHexString(uint160(serverAddress), 20)
                             ),
-                            "."
+                            " from ",
+                            H.b(
+                                H.a(
+                                    "href='https://github.com/nathanhleung/fallback/blob/main/src/example/SimpleExample.sol'",
+                                    "SimpleExample.sol"
+                                )
+                            )
                         )
                     )
                 )
