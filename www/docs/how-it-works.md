@@ -4,7 +4,62 @@ sidebar_position: 2
 
 # How It Works
 
-Let's trace through what happens when you send a request to the `MyServer` created in the [Quick Start](/docs/quickstart). An abridged version of the `MyServer` and `MyApp` contracts is reproduced below:
+## Summary
+
+Here's a quick high-level summary of how fallback() works. A more in-depth explanation is included further below on this page, under [Full Request/Response Lifecycle](#full-requestresponse-lifecycle).
+
+1. The calling contract or app serializes an HTTP request into bytes. For example:
+
+   ```solidity
+   // Convert HTTP request string into bytes in Solidity
+   bytes memory requestBytes = bytes("GET /github HTTP/1.1");
+   ```
+
+   ```javascript
+   // Convert HTTP request string into bytes in Node.js
+   const requestBytes = Buffer.from("GET /github HTTP/1.1").toString("hex");
+   ```
+
+2. The calling contract or app calls the fallback() server contract with the serialized HTTP request bytes:
+
+   ```solidity
+   // Execute low-level call on the fallback() server contract
+   (bool success, bytes memory responseBytes) = myServer.call(requestBytes);
+
+   // The fallback() contract should handle arbitrary input,
+   // including malformed requests (which should return a 400
+   // response) so `success` will generally not be `false` (if
+   // it is `false`, it's a bug!).
+   ```
+
+3. The calling contract or app can deserialize the response bytes into a valid HTTP response.
+
+   ```solidity
+   // Convert bytes into string to read response
+   string memory responseString = string(responseBytes);
+
+   // `responseString` will be "HTTP/1.1 200 OK..."
+   ```
+
+> Thanks [@gruns](https://github.com/gruns) for suggesting and outlining this summary!
+
+### Example Transaction
+
+Here's a screenshot of the input and output data of [an example transaction](https://goerli-optimism.etherscan.io/tx/0x948d272d235ae351275bf2b7b4766cf13d816062693676cb279f53e8c5459269) served by [`send-server.js`](https://github.com/nathanhleung/fallback/blob/main/src/example/send-server.js).
+
+This example request is run against an instance of the [`TodoServer`](https://github.com/nathanhleung/fallback/blob/main/src/example/Todo.sol) example fallback() app, which is deployed at [**0x919F31dAC93eBf9fFd15a54acd13082f34fDd6D3**](https://goerli-optimism.etherscan.io/address/0x919F31dAC93eBf9fFd15a54acd13082f34fDd6D3) on the Goerli Optimism testnet.
+
+### Input Data
+
+![input data](/img/input-data.png)
+
+### Output Data
+
+![output data](/img/output-data.png)
+
+## Full Request/Response Lifecycle
+
+For a more in-depth look at how fallback() works, we can trace through all the contract calls that occur when you send a request to the `MyServer` created in the [Quick Start](/docs/quickstart). An abridged version of the `MyServer` and `MyApp` contracts is reproduced below:
 
 ```solidity title="MyApp.sol" showLineNumbers
 contract MyApp is WebApp {
@@ -37,7 +92,7 @@ contract MyServer is DefaultServer {
 }
 ```
 
-## 1. `MyServer`
+### 1. `MyServer`
 
 First, we send the hex-encoded bytes of an HTTP request to `MyServer`:
 
@@ -55,7 +110,7 @@ const result = await web3.eth.call({
 contract MyServer is DefaultServer
 ```
 
-## 2. [`DefaultServer`](https://github.com/nathanhleung/fallback/blob/main/src/HttpServer.sol)
+### 2. [`DefaultServer`](https://github.com/nathanhleung/fallback/blob/main/src/HttpServer.sol)
 
 ```solidity title="HttpServer.sol"
 contract DefaultServer is HttpServer
@@ -67,7 +122,7 @@ contract DefaultServer is HttpServer
 
 So we follow the inheritance chain up to [`HttpServer`](https://github.com/nathanhleung/fallback/blob/main/src/HttpServer.sol).
 
-## 3. [`HttpServer`](https://github.com/nathanhleung/fallback/blob/main/src/HttpServer.sol)
+### 3. [`HttpServer`](https://github.com/nathanhleung/fallback/blob/main/src/HttpServer.sol)
 
 ```solidity title="HttpServer.sol"
 contract HttpServer is HttpProxy
@@ -75,7 +130,7 @@ contract HttpServer is HttpProxy
 
 [`HttpServer`](https://github.com/nathanhleung/fallback/blob/main/src/HttpServer.sol), in turn, extends [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol). [`HttpServer`](https://github.com/nathanhleung/fallback/blob/main/src/HttpServer.sol) is essentially a public API for [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) since [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) has no constructor.
 
-## 4. [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) Part 1
+### 4. [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) Part 1
 
 [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) is a contract whose only `external` or `public` function is a [`fallback`](https://docs.soliditylang.org/en/v0.8.17/contracts.html#fallback-function) function (hence, the name of this project).
 
@@ -120,7 +175,7 @@ HttpMessages.Request {
 }
 ```
 
-## 5. [`HttpHandler`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpHandler.sol)
+### 5. [`HttpHandler`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpHandler.sol)
 
 [`HttpHandler`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpHandler.sol)'s `handleRoute` function looks at the parsed HTTP method and path and checks to see if there is a corresponding route set in the `routes` mapping in [`WebApp`](https://github.com/nathanhleung/fallback/blob/main/src/WebApp.sol) (in our case, `MyApp`).
 
@@ -153,7 +208,7 @@ HttpMessages.Response {
 }
 ```
 
-## 6. [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) Part 2
+### 6. [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol) Part 2
 
 `handleRoute` will return the response back to [`HttpProxy`](https://github.com/nathanhleung/fallback/blob/main/src/http/HttpProxy.sol).
 
@@ -191,7 +246,7 @@ contract HttpProxy {
     }
 ```
 
-## 7. Error Handling
+### 7. Error Handling
 
 The code samples above are slightly simplified and don't show all the error handling code.
 
@@ -200,17 +255,3 @@ If there is no route configured, [`HttpHandler`](https://github.com/nathanhleung
 If an error occurs during request handling, a `400` (Bad Request) or `500` (Internal Server Error) error will be returned depending on where exactly the error occurred (generally, `400` if it's in `HttpProxy` and `500` if it's in `HttpHandler`).
 
 If `debug` mode is enabled on [`WebApp`](https://github.com/nathanhleung/fallback/blob/main/src/WebApp.sol), the error pages will show the full request and response data. In `debug` mode, example error pages can be accessed at the paths `/__not_found` (404), `/__bad_request` (400), and `/__error` (500).
-
-## Appendix: Example Transaction
-
-An instance of [`TodoServer`](https://github.com/nathanhleung/fallback/blob/main/src/example/Todo.sol) is deployed at [**0x919F31dAC93eBf9fFd15a54acd13082f34fDd6D3**](https://goerli-optimism.etherscan.io/address/0x919F31dAC93eBf9fFd15a54acd13082f34fDd6D3) on the Goerli Optimism testnet.
-
-Here's a screenshot of the input and output data of [an example transaction](https://goerli-optimism.etherscan.io/tx/0x948d272d235ae351275bf2b7b4766cf13d816062693676cb279f53e8c5459269) served by [`send-server.js`](https://github.com/nathanhleung/fallback/blob/main/src/example/send-server.js).
-
-### Input Data
-
-![input data](/img/input-data.png)
-
-### Output Data
-
-![output data](/img/output-data.png)
