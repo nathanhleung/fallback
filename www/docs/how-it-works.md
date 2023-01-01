@@ -39,6 +39,8 @@ Here's a quick high-level summary of how fallback() works. A more in-depth expla
    string memory responseString = string(responseBytes);
 
    // `responseString` will be "HTTP/1.1 200 OK..."
+   // (or "HTTP/1.1 302 Found..." if this is a redirect,
+   // etc.)
    ```
 
 > Thanks [@gruns](https://github.com/gruns) for suggesting and outlining this summary!
