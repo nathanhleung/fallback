@@ -107,6 +107,10 @@ EOF
 
 RUN chmod +x /docker-entrypoint.sh
 
+# To build the image, change into this directory and run:
+#
+# `docker build --no-cache -t nathanhleung/fallback:latest .`
+
 # To run the image, add your env vars and run:
 #
 # `docker run --env ETHEREUM_RPC_URL= \

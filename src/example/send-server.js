@@ -6,6 +6,8 @@
 const { ethers } = require("ethers");
 const { sendJsonRpcRequest, createServer } = require("./create-server");
 
+// Optimism Goerli
+const CHAIN_ID = process.env.CHAIN_ID || 420;
 const PORT = process.env.PORT || 8000;
 const FALLBACK_SERVER_CONTRACT_ADDRESS =
   process.env.FALLBACK_SERVER_CONTRACT_ADDRESS;
@@ -37,6 +39,9 @@ async function requestHandler(requestData, attempt = 0) {
     const walletAddress = await wallet.getAddress();
 
     const baseTransaction = {
+      // Fix "only replay-protected (EIP-155) transactions allowed over RPC" error
+      // https://docs.alchemy.com/changelog/08252022-removed-support-for-unprotected-transactions
+      chainId: CHAIN_ID,
       from: walletAddress,
       to: FALLBACK_SERVER_CONTRACT_ADDRESS,
       data: `0x${requestData}`,
