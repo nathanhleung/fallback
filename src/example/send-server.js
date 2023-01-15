@@ -6,8 +6,6 @@
 const { ethers } = require("ethers");
 const { sendJsonRpcRequest, createServer } = require("./create-server");
 
-// Optimism Goerli
-const CHAIN_ID = process.env.CHAIN_ID || 420;
 const PORT = process.env.PORT || 8000;
 const FALLBACK_SERVER_CONTRACT_ADDRESS =
   process.env.FALLBACK_SERVER_CONTRACT_ADDRESS;
@@ -39,46 +37,54 @@ async function requestHandler(requestData, attempt = 0) {
     const walletAddress = await wallet.getAddress();
 
     const baseTransaction = {
-      // Fix "only replay-protected (EIP-155) transactions allowed over RPC" error
-      // https://docs.alchemy.com/changelog/08252022-removed-support-for-unprotected-transactions
-      chainId: CHAIN_ID,
       from: walletAddress,
       to: FALLBACK_SERVER_CONTRACT_ADDRESS,
       data: `0x${requestData}`,
     };
+
+    const chainIdRequest = sendJsonRpcRequest({
+      jsonrpc: "2.0",
+      id: "0",
+      method: "eth_chainId",
+    });
 
     // Making sure we always have the right nonce is the main blocker for
     // good request concurrency. Some ideas here:
     // https://ethereum.stackexchange.com/questions/39790/concurrency-patterns-for-account-nonce
     const transactionCountRequest = sendJsonRpcRequest({
       jsonrpc: "2.0",
-      id: "0",
+      id: "1",
       method: "eth_getTransactionCount",
       params: [walletAddress, "pending"],
     });
 
     const gasEstimateRequest = sendJsonRpcRequest({
       jsonrpc: "2.0",
-      id: "1",
+      id: "2",
       method: "eth_estimateGas",
       params: [baseTransaction],
     });
 
     const gasPriceRequest = sendJsonRpcRequest({
       jsonrpc: "2.0",
-      id: "2",
+      id: "3",
       method: "eth_gasPrice",
       params: [],
     });
 
-    const [transactionCount, gasEstimate, gasPrice] = await Promise.all([
-      transactionCountRequest,
-      gasEstimateRequest,
-      gasPriceRequest,
-    ]);
+    const [chainId, transactionCount, gasEstimate, gasPrice] =
+      await Promise.all([
+        chainIdRequest,
+        transactionCountRequest,
+        gasEstimateRequest,
+        gasPriceRequest,
+      ]);
 
     const signedTransaction = await wallet.signTransaction({
       ...baseTransaction,
+      // Fix "only replay-protected (EIP-155) transactions allowed over RPC" error
+      // https://docs.alchemy.com/changelog/08252022-removed-support-for-unprotected-transactions
+      chainId: parseInt(chainId, 16),
       gasLimit: Math.ceil(Number(gasEstimate) * 1.25),
       gasPrice: Number(gasPrice),
       nonce: Number(transactionCount),
@@ -99,7 +105,14 @@ async function requestHandler(requestData, attempt = 0) {
     return responseEventData.slice(2);
   } catch (err) {
     // Hacky solution (for now) to handle duplicate nonces
-    if (err.error.message.includes("nonce too low") && attempt < 5) {
+    if (
+      err &&
+      err.error &&
+      err.error.message &&
+      err.error.messages.includes &&
+      err.error.message.includes("nonce too low") &&
+      attempt < 5
+    ) {
       // Try again
       console.error("Nonce too low, trying again...");
       // Limit attempts to prevent leaking memory
