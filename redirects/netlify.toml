@@ -1,0 +1,14 @@
+[build]
+  publish = 'src/'
+
+[[redirects]]
+  from = "http://simple.fallback.natecation.xyz/*"
+  to = "https://fallback.natecation.xyz/placeholders/simple"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "http://todo.fallback.natecation.xyz/*"
+  to = "https://fallback.natecation.xyz/placeholders/todo"
+  status = 302
+  force = true
